@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 
-export default function Login() {
+function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -52,12 +52,10 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
-        {/* Logo */}
         <Link href="/" className="block text-center mb-8">
           <span className="text-2xl font-black text-white">🏠 HomeCalc</span>
         </Link>
 
-        {/* Card */}
         <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-8">
           <h1 className="text-2xl font-bold text-white text-center mb-1">
             Welcome back
@@ -66,7 +64,6 @@ export default function Login() {
             Log in to access your saved scenarios
           </p>
 
-          {/* Google Button */}
           <button
             onClick={handleGoogleLogin}
             disabled={loading}
@@ -81,14 +78,12 @@ export default function Login() {
             Continue with Google
           </button>
 
-          {/* Divider */}
           <div className="flex items-center gap-3 my-5">
             <div className="flex-1 h-px bg-white/10" />
             <span className="text-xs text-slate-500 font-medium">or</span>
             <div className="flex-1 h-px bg-white/10" />
           </div>
 
-          {/* Email Form */}
           <form onSubmit={handleLogin}>
             <div className="mb-3">
               <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
@@ -149,7 +144,6 @@ export default function Login() {
           </form>
         </div>
 
-        {/* Sign up link */}
         <p className="text-center mt-6 text-sm text-slate-500">
           Don&apos;t have an account?{' '}
           <Link href="/signup" className="text-blue-400 font-semibold hover:text-blue-300">
@@ -158,5 +152,13 @@ export default function Login() {
         </p>
       </div>
     </div>
+  )
+}
+
+export default function Login() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-900" />}>
+      <LoginForm />
+    </Suspense>
   )
 }
