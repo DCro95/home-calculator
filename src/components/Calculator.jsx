@@ -27,17 +27,36 @@ const $=n=>"$"+Math.round(Math.abs(n)).toLocaleString();
 const $2=n=>"$"+Math.abs(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
 const pc=n=>(n*100).toFixed(1)+"%";
 
-function genReport(c,inp){
-  const sn=STATES[inp.st]?.n||inp.st;const now=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+// ─── TAB INFO DESCRIPTIONS ─────────────────────────────────────────────────
+const TAB_INFO = {
+  sell: "Planning to sell your current home first? Enter your current home value, what you still owe on the mortgage, and your estimated selling costs. The calculator figures out your net equity and lets you apply it as the down payment on your next purchase — showing you instantly how it changes your loan amount, monthly PITI, and whether you'll need additional cash to close.",
+  income: "Enter your full household gross income (salaries, bonuses, rental income, side businesses) plus any pre-tax deductions like 401(k) or HSA contributions. Select your state and filing status and the app calculates your exact federal tax (2025 brackets), state income tax, FICA (Social Security + Medicare), and your true monthly take-home pay.",
+  mortgage: "Input the home price, down payment percentage, loan type (30-yr Fixed or 7/1 ARM), and term. Override the property tax with a local millage rate if you know it, and enter homeowner's insurance. The app builds your full monthly PITI — Principal, Interest, Tax, Insurance — and adds PMI automatically if your down payment is under 20%.",
+  max: "Based on your income and existing debts, see the maximum home price you can afford under three standard affordability methods: the conservative 28% front-end DTI (housing ≤ 28% of gross), the conventional ceiling of 45% back-end DTI (housing + all debts ≤ 45% gross), and the real-world 30%-of-net-income rule. Your target price is plotted against all three.",
+  amort: "View the full amortization schedule for your loan — every payment broken down into principal vs. interest, with running balance. Add an extra monthly payment to the principal and see two schedules side by side: how much interest you save over the life of the loan and how many years early you pay it off.",
+  invest: "Should you put extra money toward paying down your mortgage, or invest it in the market? Enter an extra monthly amount and an expected annual return. The app compares guaranteed interest savings vs. projected portfolio growth year-by-year, and declares a winner at your loan term.",
+  budget: "Enter all your monthly obligated debts that appear on your credit report (car payments, student loans, credit cards) and your full set of discretionary living expenses (groceries, utilities, subscriptions, and more). Home maintenance is automatically estimated at 1% of the purchase price annually.",
+  rule: "The 50/30/20 rule is a simple, powerful personal finance framework. 50% of after-tax income goes to Needs (housing, utilities, insurance, minimum debt payments), 30% to Wants (dining, entertainment, hobbies), and 20% to Savings & investments. This tab maps your actual numbers from every other tab onto this framework so you can see exactly where you stand.",
+  summary: "Your complete financial health dashboard — monthly cash flow, surplus or shortfall, all four affordability ratios (front-end DTI, back-end DTI, housing-to-net, total expense ratio), and total cash needed to close. Download a full PDF report that combines every tab's data into a single printable document.",
+};
+
+function genReport(c, inp, sellData, ruleData) {
+  const sn=STATES[inp.st]?.n||inp.st;
+  const now=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
   const rw=(l,v,cl="")=>`<tr class="${cl}"><td>${l}</td><td class="n">${v}</td></tr>`;
   const hd=t=>`<tr class="h"><td colspan="2">${t}</td></tr>`;
   const rt=(l,v,tg,d)=>{const ok=v<=tg;return`<div class="rt ${ok?'g':'w'}"><div class="rl"><b>${l}</b><br><small>${d}</small></div><div class="rv">${pc(v)}<span>${ok?'✓ GOOD':'⚠ HIGH'}</span></div></div>`;};
+  const ruleRow=(label,actual,target,pct)=>{
+    const ok=actual<=target;
+    return`<tr class="${ok?'':'w'}"><td>${label}</td><td class="n">${$(actual)}</td><td class="n">${$(target)}</td><td class="n" style="color:${ok?'#16a34a':'#dc2626'}">${pc(pct)} ${ok?'✓':'⚠'}</td></tr>`;
+  };
+
   const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Home Affordability Report</title>
 <style>@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700;900&display=swap');
-*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Source Sans 3',sans-serif;color:#1e293b;padding:32px;max-width:800px;margin:0 auto;font-size:11px;line-height:1.5}
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Source Sans 3',sans-serif;color:#1e293b;padding:32px;max-width:820px;margin:0 auto;font-size:11px;line-height:1.5}
 h1{font-size:22px;font-weight:900;color:#0f172a;border-bottom:3px solid #1e40af;padding-bottom:6px;margin-bottom:4px}
 h2{font-size:13px;font-weight:800;color:#fff;background:#1e293b;padding:5px 10px;margin:14px 0 4px;border-radius:4px}
-h2.g{background:#15803d}h2.r{background:#b91c1c}h2.p{background:#4a148c}
+h2.g{background:#15803d}h2.r{background:#b91c1c}h2.p{background:#4a148c}h2.o{background:#c2410c}h2.teal{background:#0f766e}
 .sub{font-size:10px;color:#64748b;margin-bottom:10px}.dt{font-size:10px;color:#94a3b8;margin-bottom:14px}
 table{width:100%;border-collapse:collapse;margin-bottom:8px;font-size:11px}td{padding:3px 8px;border-bottom:1px solid #f1f5f9}
 td.n{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
@@ -51,15 +70,20 @@ tr.w td{background:#fef2f2;color:#dc2626}tr.hl td{background:#eff6ff;font-weight
 .rv{text-align:right;font-size:15px;font-weight:900}.rv span{font-size:9px;display:block}
 .rt.g .rv{color:#16a34a}.rt.w .rv{color:#dc2626}
 .bx{border:2px solid #1e40af;border-radius:8px;padding:10px;margin:8px 0;text-align:center}
-.bx.g{border-color:#16a34a;background:#f0fdf4}.bx.r{border-color:#dc2626;background:#fef2f2}
+.bx.g{border-color:#16a34a;background:#f0fdf4}.bx.r{border-color:#dc2626;background:#fef2f2}.bx.o{border-color:#c2410c;background:#fff7ed}
 .big{font-size:22px;font-weight:900}.lb{font-size:9px;color:#64748b;margin-bottom:2px}
-.bx.g .big{color:#16a34a}.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:6px 0}.g3 .bx{margin:0}
+.bx.g .big{color:#16a34a}.bx.o .big{color:#c2410c}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:6px 0}.g3 .bx{margin:0}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0}.g2 .bx{margin:0}
 .nt{font-size:9px;color:#94a3b8;margin-top:14px;padding-top:8px;border-top:1px solid #e2e8f0}
+.bar-wrap{background:#e2e8f0;border-radius:5px;height:14px;overflow:hidden;margin:4px 0}
+.bar-fill{height:100%;border-radius:5px;display:flex;align-items:center;padding:0 4px;font-size:8px;font-weight:700;color:#fff}
 @media print{body{padding:16px;font-size:10px}h2{break-after:avoid}table{break-inside:avoid}.tc{break-inside:avoid}}
 </style></head><body>
-<h1>Home Affordability Report</h1>
+<h1>🏠 Home Affordability Report</h1>
 <div class="sub">${sn} • ${inp.fl} Filing • ${inp.ty}-Year ${inp.lt}</div>
 <div class="dt">Generated ${now}</div>
+
 <div class="tc"><div>
 <h2>Income & Taxes</h2><table>
 ${rw("Household Gross Income",$(c.gross))}${rw("Pre-Tax Deductions",$(c.pretax))}${rw("Taxable Income",$(c.taxable))}
@@ -74,29 +98,56 @@ ${rw("Closing Costs (~"+inp.cp+"%)",$(c.closing))}${rw("Total Cash Needed",$(c.d
 ${hd("MONTHLY PITI")}${rw("Principal & Interest",$2(c.mPI))}${rw("Property Tax",$2(c.mTx))}${rw("Insurance",$2(c.mIns))}
 ${c.hasPMI?rw("PMI",$2(c.mPMI)):""}${rw("TOTAL MONTHLY PITI",$(c.piti),"t")}${rw("Total Interest Over Loan",$(c.am.tiS))}
 </table></div></div>
+
 <h2 class="g">Maximum Borrowing Power</h2>
 <div class="g3">
 <div class="bx g"><div class="lb">Max Home (28% Gross DTI)</div><div class="big">${$(c.mx28)}</div></div>
 <div class="bx g"><div class="lb">Max Home (45% Gross DTI)</div><div class="big">${$(c.mx45)}</div></div>
 <div class="bx"><div class="lb">Max Home (30% Net Income)</div><div class="big">${$(c.mxN)}</div></div>
 </div>
-<h2>Monthly Cash Flow</h2><table>
+
+<h2>Monthly Cash Flow & Budget</h2><table>
 ${rw("Monthly Net Income",$(c.netM))}${rw("Housing (PITI)","−"+$(c.piti))}
 ${c.extra>0?rw("Extra Mortgage Payment","−"+$(c.extra)):""}
 ${rw("Obligated Debts","−"+$(c.totD))}${rw("Discretionary Expenses","−"+$(c.totE))}
 ${rw(c.surplus>=0?"Monthly Surplus":"Monthly Shortfall",$(c.surplus),c.surplus>=0?"t":"w")}
 </table>
+
 <h2>Affordability Ratios</h2>
 ${rt("Front-End DTI (Housing ÷ Gross)",c.fDTI,.28,"Lender guideline ≤ 28%")}
 ${rt("Back-End DTI (Housing+Debts ÷ Gross)",c.bDTI,.45,"Conventional max ≤ 45%")}
 ${rt("Housing-to-Net Ratio",c.hNet,.30,"Comfort target ≤ 30%")}
 ${rt("Total Expense-to-Net",c.eRat,.85,"Target ≤ 85% for 15%+ buffer")}
+
+${sellData&&sellData.equity>0?`
+<h2 class="o">Sell & Move Up Analysis</h2>
+<table>
+${rw("Current Home Value",$(sellData.curVal))}${rw("Remaining Mortgage",$(sellData.curOwed))}
+${rw("Selling Costs ("+sellData.sellCostPct+"%)",$(sellData.sellCosts))}${rw("Net Equity",$(sellData.equity),"hl")}
+</table>
+<div class="g3">
+<div class="bx g"><div class="lb">New Purchase Price</div><div class="big">${$(sellData.newPr)}</div></div>
+<div class="bx"><div class="lb">New Down Payment</div><div class="big">${pc(sellData.newDpPct)}</div></div>
+<div class="bx ${sellData.newPiti<c.piti?'g':'r'}"><div class="lb">New Monthly PITI</div><div class="big">${$(sellData.newPiti)}</div></div>
+</div>`:""}
+
+${ruleData?`
+<h2 class="teal">50/30/20 Budget Analysis</h2>
+<table>
+<tr class="h"><td>Category</td><td class="n">Actual/mo</td><td class="n">Target/mo</td><td class="n">% of Net</td></tr>
+${ruleRow("🏠 Needs (50% target)",ruleData.needs,ruleData.t50,ruleData.needs/c.netM)}
+${ruleRow("🎯 Wants (30% target)",ruleData.wants,ruleData.t30,ruleData.wants/c.netM)}
+${ruleRow("💰 Savings (20% target)",ruleData.savings,ruleData.t20,ruleData.savings/c.netM)}
+</table>`:""}
+
 ${c.extra>0?`<h2 class="p">Extra Payment & Investment Analysis</h2>
-<div class="tc"><div class="bx g"><div class="lb">Pay Down: Interest Saved</div><div class="big">${$(c.intSv)}</div>
+<div class="g2">
+<div class="bx g"><div class="lb">Pay Down: Interest Saved</div><div class="big">${$(c.intSv)}</div>
 <div style="font-size:10px;color:#64748b">Payoff: ${(c.am.po/12).toFixed(1)} yrs (${((inp.ty*12-c.am.po)/12).toFixed(1)} early)</div></div>
 <div class="bx"><div class="lb">Invest: Portfolio at Year ${inp.ty}</div><div class="big">${$(c.invEnd.v)}</div>
 <div style="font-size:10px;color:#64748b">${inp.sr}% return • Gains: ${$(c.invEnd.g)}</div></div></div>`:""}
-<div class="bx" style="margin-top:10px"><div class="lb">6-Month Emergency Fund</div><div class="big" style="color:#92400e">${$(c.totOut*6)}</div></div>
+
+<div class="bx" style="margin-top:10px"><div class="lb">6-Month Emergency Fund Target</div><div class="big" style="color:#92400e">${$(c.totOut*6)}</div></div>
 <div class="nt"><b>Disclaimer:</b> Educational/planning purposes only — not financial, legal, or tax advice. Consult a licensed mortgage professional, tax advisor, and financial planner. Tax calculations use 2025 federal brackets and approximate state rates. Property tax uses ${sn} average effective rate (${(STATES[inp.st]?.p*100||0).toFixed(2)}%) — actual rates vary by county. Investment returns not guaranteed.</div>
 </body></html>`;
   const b=new Blob([html],{type:'text/html'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='Home_Affordability_Report.html';a.click();URL.revokeObjectURL(u);
@@ -142,18 +193,55 @@ function Sec({title,color="#1e293b",children}){return(<div style={{marginBottom:
 
 function PR({label,val,color,bg}){return(<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 8px",borderRadius:6,background:bg,marginBottom:2}}><span style={{fontSize:10,fontWeight:600,color}}>{label}</span><span style={{fontSize:12,fontWeight:900,color}}>{$2(val)}</span></div>);}
 
+// Rule bar for 50/30/20 visualization
+function RuleBar({label,actual,target,color,pct}){
+  const over=actual>target;
+  const barW=Math.min((actual/Math.max(target,1))*100,150);
+  return(<div style={{marginBottom:8}}>
+    <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}>
+      <span style={{fontSize:10,fontWeight:700,color}}>{label}</span>
+      <div style={{textAlign:"right"}}>
+        <span style={{fontSize:11,fontWeight:900,color:over?"#dc2626":color}}>{$(actual)}</span>
+        <span style={{fontSize:8,color:"#94a3b8",marginLeft:4}}>of {$(target)} target ({pc(pct)})</span>
+      </div>
+    </div>
+    <div style={{background:"#e2e8f0",borderRadius:5,height:12,overflow:"hidden",position:"relative"}}>
+      <div style={{height:"100%",width:`${Math.min((actual/Math.max(target,1))*100,100)}%`,background:over?"#ef4444":color,borderRadius:5,transition:"width .4s"}}/>
+      {barW>100&&<div style={{position:"absolute",left:`${100}%`,top:0,height:"100%",width:`${barW-100}%`,background:"#fca5a5",opacity:.6}}/>}
+    </div>
+    <div style={{fontSize:8,color:over?"#dc2626":"#94a3b8",marginTop:1,textAlign:"right"}}>{over?`⚠ ${$(actual-target)} over budget`:`✓ ${$(target-actual)} remaining`}</div>
+  </div>);
+}
+
+const TH={padding:"4px 5px",textAlign:"center",color:"#fff",fontSize:8,fontWeight:700,textTransform:"uppercase",whiteSpace:"nowrap"};
+const TD={padding:"3px 5px",borderBottom:"1px solid #f1f5f9",fontSize:9};
+
 export default function App(){
+  // ── Income state ──────────────────────────────────────────────────────────
   const[i1,sI1]=useState(85000);const[i2,sI2]=useState(65000);const[bon,sB]=useState(0);const[rI,sRI]=useState(0);const[sI,sSI]=useState(0);const[oI,sOI]=useState(0);
   const[fil,setFil]=useState("mfj");const[k4,sK]=useState(0);const[hs,sH]=useState(0);const[oP,sOP]=useState(0);const[st,setSt]=useState("MI");
+  // ── Mortgage state ────────────────────────────────────────────────────────
   const[pr,setPr]=useState(350000);const[dp,setDp]=useState(10);const[lt,setLt]=useState("fixed");
   const[fr,setFr]=useState(6.24);const[ar,setAr]=useState(5.75);const[ty,setTy]=useState(30);
   const[mo,setMo]=useState(0);const[ins,setIns]=useState(1500);const[pm,setPm]=useState(.4);const[cp,setCp]=useState(3);
   const[ex,setEx]=useState(0);const[sr,setSr]=useState(10);
+  // ── Budget state ──────────────────────────────────────────────────────────
   const dL=["Car Pmt #1","Car Pmt #2","Car Insurance","Student Loan","Credit Card #1","Credit Card #2","Personal Loan","Medical","Other Debt"];
   const[dV,sDV]=useState([450,350,280,200,50,25,0,0,0]);
   const eL=["Groceries","Dining Out","Electric","Gas/Heat","Water/Sewer","Trash","Internet","Cell Phones","Streaming","Gym","Gas/Fuel","Vehicle Maint","Home Maint","Lawn/Snow","Clothing","Haircuts","Entertainment","Pets","Kids","Gifts","Medical","Rx","Life Insurance","Savings","Retirement","Vacation","Other"];
   const[eV,sEV]=useState([800,200,120,100,60,30,60,140,60,50,250,100,0,75,100,50,100,50,0,75,50,0,0,500,0,100,0]);
+  // ── Sell tab state ────────────────────────────────────────────────────────
+  const[curVal,setCurVal]=useState(300000);
+  const[curOwed,setCurOwed]=useState(200000);
+  const[sellCostPct,setSellCostPct]=useState(7);
+  const[newPr,setNewPr]=useState(350000);
+  const[newLt,setNewLt]=useState("fixed");
+  const[newTy,setNewTy]=useState(30);
+  const[applyEquity,setApplyEquity]=useState(false);
+  // ── UI state ──────────────────────────────────────────────────────────────
   const[tab,setTab]=useState("income");const[av,setAv]=useState("yearly");
+  const[tipTab,setTipTab]=useState(null);
+
   const uD=useCallback((i,v)=>sDV(d=>{const c=[...d];c[i]=v;return c;}),[]);
   const uE=useCallback((i,v)=>sEV(d=>{const c=[...d];c[i]=v;return c;}),[]);
   const TMS=[30,25,20,15,10];const sd=STATES[st]||STATES.MI;
@@ -161,6 +249,7 @@ export default function App(){
   const flL=fil==="mfj"?"Married Filing Jointly":fil==="single"?"Single":"Head of Household";
   const ltL=lt==="fixed"?`${ty}-Year Fixed`:"7/1 ARM";
 
+  // ── Main calculations ─────────────────────────────────────────────────────
   const c=useMemo(()=>{
     const gross=i1+i2+bon+rI+sI+oI;const pretax=k4+hs+oP;const agi=gross-pretax;const sDed=STDDED[fil]||3e4;
     const taxable=Math.max(agi-sDed,0);const fTx=fedTax(taxable,fil);const sTx=stTax(taxable,st);
@@ -185,29 +274,230 @@ export default function App(){
       am,inv,invEnd,intSv};
   },[i1,i2,bon,rI,sI,oI,fil,k4,hs,oP,st,pr,dp,lt,fr,ar,ty,mo,ins,pm,cp,ex,sr,dV,eV,pR]);
 
-  const sC=c.surplus>=0?"#16a34a":"#dc2626";const sB2=c.surplus>=0?"#f0fdf4":"#fef2f2";
-  const tabs=[{id:"income",l:"Income",i:"💰"},{id:"mortgage",l:"Mortgage",i:"🏠"},{id:"max",l:"Max Loan",i:"🎯"},{id:"amort",l:"Amortize",i:"📅"},{id:"invest",l:"Invest",i:"📈"},{id:"budget",l:"Budget",i:"📊"},{id:"summary",l:"Summary",i:"✅"}];
+  // ── Sell tab calculations ─────────────────────────────────────────────────
+  const sellCalc=useMemo(()=>{
+    const sellCosts=curVal*(sellCostPct/100);
+    const equity=Math.max(curVal-curOwed-sellCosts,0);
+    const newDpAmt=applyEquity?equity:0;
+    const newDpPct=newPr>0?Math.min((newDpAmt/newPr)*100,100):0;
+    const effectiveDp=applyEquity?newDpPct:20;
+    const extraCash=applyEquity?Math.max(newDpAmt-newPr*effectiveDp/100,0):0;
+    const newLoan=Math.max(newPr-newDpAmt,0);
+    const newRate=(newLt==="fixed"?fr:ar)/100;
+    const newMPI=pmt(newRate,newTy,newLoan);
+    const newMTx=(newPr*pR)/12;
+    const newMIns=ins/12;
+    const newHasPMI=effectiveDp<20&&!applyEquity;
+    const newMPMI=newHasPMI?(newLoan*pm/100)/12:0;
+    const newPiti=newMPI+newMTx+newMIns+newMPMI;
+    const newClosing=newLoan*(cp/100);
+    const cashNeeded=Math.max(newPr-newDpAmt+newClosing,0);
+    return{sellCosts,equity,newDpAmt,newDpPct,newLoan,newMPI,newMTx,newMIns,newHasPMI,newMPMI,newPiti,newClosing,cashNeeded,extraCash,curVal,curOwed,sellCostPct,newPr,newLt,newTy};
+  },[curVal,curOwed,sellCostPct,newPr,newLt,newTy,fr,ar,ins,pm,cp,pR,applyEquity]);
 
-  return(<div style={{fontFamily:"'Segoe UI',system-ui,sans-serif",background:"linear-gradient(160deg,#f1f5f9,#e8f0fe,#f0fdf4)",minHeight:"100vh"}}>
+  // ── 50/30/20 calculations ─────────────────────────────────────────────────
+  const ruleCalc=useMemo(()=>{
+    const ev=c.ec; // includes auto home maint
+    // NEEDS: housing+debts+utilities+insurance+medical
+    const needs=c.piti+c.totD+ev[2]+ev[3]+ev[4]+ev[5]+ev[6]+ev[7]+ev[12]+ev[20]+ev[21]+ev[22];
+    // WANTS: food/entertainment/lifestyle
+    const wants=ev[0]+ev[1]+ev[8]+ev[9]+ev[10]+ev[11]+ev[13]+ev[14]+ev[15]+ev[16]+ev[17]+ev[18]+ev[19]+ev[25]+ev[26];
+    // SAVINGS: explicit savings + retirement + kids (future)
+    const savings=ev[23]+ev[24];
+    const netM=c.netM;
+    const t50=netM*0.5;const t30=netM*0.3;const t20=netM*0.2;
+    const unallocated=Math.max(netM-needs-wants-savings,0);
+    return{needs,wants,savings,t50,t30,t20,netM,unallocated,
+      needsPct:netM>0?needs/netM:0,wantsPct:netM>0?wants/netM:0,savingsPct:netM>0?savings/netM:0};
+  },[c]);
+
+  const sC=c.surplus>=0?"#16a34a":"#dc2626";const sB2=c.surplus>=0?"#f0fdf4":"#fef2f2";
+
+  const tabs=[
+    {id:"sell",  l:"Sell",    i:"🏡", tip:"sell"},
+    {id:"income",l:"Income",  i:"💰", tip:"income"},
+    {id:"mortgage",l:"Mortgage",i:"🏠",tip:"mortgage"},
+    {id:"max",   l:"Max Loan",i:"🎯", tip:"max"},
+    {id:"amort", l:"Amortize",i:"📅", tip:"amort"},
+    {id:"invest",l:"Invest",  i:"📈", tip:"invest"},
+    {id:"budget",l:"Budget",  i:"📊", tip:"budget"},
+    {id:"rule",  l:"50/30/20",i:"⚖️", tip:"rule"},
+    {id:"summary",l:"Summary",i:"✅", tip:"summary"},
+  ];
+
+  return(
+  <div style={{fontFamily:"'Segoe UI',system-ui,sans-serif",background:"linear-gradient(160deg,#f1f5f9,#e8f0fe,#f0fdf4)",minHeight:"100vh"}} onClick={()=>tipTab&&setTipTab(null)}>
+
+    {/* ── Header ── */}
     <div style={{background:"linear-gradient(135deg,#0f172a,#1e3a5f)",padding:"10px 12px"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <div><div style={{fontSize:14,fontWeight:900,color:"#fff"}}>🏠 Home Affordability Calculator</div>
-          <div style={{fontSize:9,color:"#93c5fd",marginTop:1}}>Mortgage, tax & budget analysis • All 50 states + DC</div></div>
-        <button onClick={()=>genReport(c,{st,fl:flL,ty,lt:ltL,price:pr,dp,cp,sr})}
+        <div>
+          <div style={{fontSize:14,fontWeight:900,color:"#fff"}}>🏠 Home Affordability Calculator</div>
+          <div style={{fontSize:9,color:"#93c5fd",marginTop:1}}>Mortgage, tax & budget analysis • All 50 states + DC</div>
+        </div>
+        <button onClick={e=>{e.stopPropagation();genReport(c,{st,fl:flL,ty,lt:ltL,price:pr,dp,cp,sr},sellCalc,ruleCalc);}}
           style={{padding:"6px 12px",borderRadius:7,background:"linear-gradient(135deg,#22c55e,#16a34a)",color:"#fff",fontSize:9,fontWeight:800,border:"none",cursor:"pointer",boxShadow:"0 2px 8px #16a34a40"}}>📄 Download Report</button>
       </div>
     </div>
+
+    {/* ── Top stats bar ── */}
     <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:4,padding:5,background:"#fff",borderBottom:"1px solid #e2e8f0"}}>
       <St label="PITI" value={$(c.piti)} color="#1e40af" bg="#eff6ff" icon="🏡"/>
       <St label="Net Mo" value={$(c.netM)} color="#047857" bg="#ecfdf5" icon="💵"/>
       <St label={c.surplus>=0?"Surplus":"Short"} value={$(c.surplus)} color={sC} bg={sB2} icon={c.surplus>=0?"✅":"⚠️"}/>
       <St label="DTI" value={pc(c.bDTI)} color={c.bDTI<=.45?"#047857":"#dc2626"} bg={c.bDTI<=.45?"#ecfdf5":"#fef2f2"} sub={c.bDTI<=.45?"OK":"High"}/>
     </div>
-    <div style={{display:"flex",background:"#fff",borderBottom:"2px solid #e2e8f0",overflowX:"auto"}}>
-      {tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{flex:"1 0 auto",padding:"6px 1px",fontSize:8,fontWeight:700,cursor:"pointer",background:tab===t.id?"#1e40af":"transparent",color:tab===t.id?"#fff":"#64748b",border:"none",borderBottom:tab===t.id?"3px solid #3b82f6":"3px solid transparent",whiteSpace:"nowrap"}}>{t.i} {t.l}</button>)}
+
+    {/* ── Tab bar with info tooltips ── */}
+    <div style={{background:"#fff",borderBottom:"2px solid #e2e8f0",position:"relative"}}>
+      <div style={{display:"flex",overflowX:"auto"}}>
+        {tabs.map(t=>(
+          <div key={t.id} style={{position:"relative",flex:"1 0 auto"}}>
+            <button onClick={()=>setTab(t.id)}
+              style={{width:"100%",padding:"6px 1px 4px",fontSize:8,fontWeight:700,cursor:"pointer",
+                background:tab===t.id?"#1e40af":"transparent",
+                color:tab===t.id?"#fff":"#64748b",border:"none",
+                borderBottom:tab===t.id?"3px solid #3b82f6":"3px solid transparent",
+                whiteSpace:"nowrap",display:"block"}}>
+              {t.i} {t.l}
+            </button>
+            {/* Info button */}
+            <button onClick={e=>{e.stopPropagation();setTipTab(tipTab===t.tip?null:t.tip);}}
+              style={{position:"absolute",top:2,right:2,width:12,height:12,borderRadius:"50%",
+                background:tipTab===t.tip?"#3b82f6":"#cbd5e1",color:"#fff",fontSize:7,fontWeight:900,
+                border:"none",cursor:"pointer",lineHeight:"12px",padding:0,display:"flex",alignItems:"center",justifyContent:"center"}}>ℹ</button>
+          </div>
+        ))}
+      </div>
+      {/* Tooltip popover */}
+      {tipTab&&(
+        <div onClick={e=>e.stopPropagation()}
+          style={{position:"absolute",top:"100%",left:0,right:0,zIndex:100,
+            background:"#0f172a",color:"#e2e8f0",padding:"10px 14px",
+            fontSize:10,lineHeight:1.6,borderBottom:"3px solid #3b82f6",
+            boxShadow:"0 6px 24px rgba(0,0,0,.35)"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+            <div>
+              <div style={{fontWeight:800,color:"#93c5fd",marginBottom:4,fontSize:11}}>
+                {tabs.find(t=>t.tip===tipTab)?.i} {tabs.find(t=>t.tip===tipTab)?.l}
+              </div>
+              {TAB_INFO[tipTab]}
+            </div>
+            <button onClick={()=>setTipTab(null)}
+              style={{background:"none",border:"none",color:"#94a3b8",fontSize:14,cursor:"pointer",flexShrink:0,lineHeight:1}}>✕</button>
+          </div>
+        </div>
+      )}
     </div>
+
     <div style={{padding:10,maxWidth:820,margin:"0 auto"}}>
 
+    {/* ════════════════════════════════════════════════════════
+        SELL TAB
+    ════════════════════════════════════════════════════════ */}
+    {tab==="sell"&&<div>
+      <div style={{padding:8,borderRadius:7,background:"linear-gradient(135deg,#fff7ed,#fffbeb)",border:"2px solid #fed7aa",marginBottom:10}}>
+        <div style={{fontSize:11,fontWeight:900,color:"#c2410c",marginBottom:2}}>🏡 Sell Your Current Home → Fund Your Next Purchase</div>
+        <div style={{fontSize:9,color:"#92400e"}}>Enter your current home details to calculate your net equity, then apply that equity as a down payment on your next home. See exactly how your sale affects your new monthly payment.</div>
+      </div>
+
+      <Sec title="Your Current Home" color="#c2410c">
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
+          <I label="Current Home Value" value={curVal} onChange={setCurVal} step={5000}/>
+          <I label="Remaining Mortgage" value={curOwed} onChange={setCurOwed} step={1000}/>
+        </div>
+        <I label="Selling Costs %" value={sellCostPct} onChange={setSellCostPct} prefix="" suffix="%" step={.5} help="Agent fees + closing ~6-8%"/>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4,padding:6,borderRadius:6,background:"#fff7ed",border:"1px solid #fed7aa",textAlign:"center",marginTop:4}}>
+          <div><div style={{fontSize:8,color:"#64748b"}}>Home Value</div><div style={{fontWeight:900,fontSize:13,color:"#c2410c"}}>{$(curVal)}</div></div>
+          <div><div style={{fontSize:8,color:"#64748b"}}>Selling Costs</div><div style={{fontWeight:900,fontSize:13,color:"#dc2626"}}>−{$(sellCalc.sellCosts)}</div></div>
+          <div><div style={{fontSize:8,color:"#64748b"}}>Remaining Owed</div><div style={{fontWeight:900,fontSize:13,color:"#dc2626"}}>−{$(curOwed)}</div></div>
+        </div>
+        <div style={{marginTop:6,padding:10,borderRadius:8,background:sellCalc.equity>0?"#f0fdf4":"#fef2f2",border:`2px solid ${sellCalc.equity>0?"#16a34a":"#dc2626"}`,textAlign:"center"}}>
+          <div style={{fontSize:9,fontWeight:700,color:sellCalc.equity>0?"#15803d":"#dc2626",textTransform:"uppercase"}}>Estimated Net Equity</div>
+          <div style={{fontSize:28,fontWeight:900,color:sellCalc.equity>0?"#16a34a":"#dc2626"}}>{$(sellCalc.equity)}</div>
+          {sellCalc.equity<=0&&<div style={{fontSize:9,color:"#dc2626",marginTop:2}}>⚠ Negative equity — you may owe money at closing</div>}
+        </div>
+      </Sec>
+
+      <Sec title="Your Next Purchase" color="#1e40af">
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
+          <I label="New Home Price" value={newPr} onChange={setNewPr} step={5000}/>
+          <div>
+            <div style={{fontSize:9,fontWeight:700,textTransform:"uppercase",color:"#6b7a8d",marginBottom:2}}>Loan Type</div>
+            <div style={{display:"flex",gap:3,marginBottom:6}}>{[["fixed","Fixed"],["arm","7/1 ARM"]].map(([v,l])=>
+              <button key={v} onClick={()=>setNewLt(v)} style={{flex:1,padding:"6px",fontSize:10,fontWeight:700,borderRadius:6,cursor:"pointer",background:newLt===v?"#1e40af":"#f1f5f9",color:newLt===v?"#fff":"#475569",border:newLt===v?"2px solid #1e40af":"2px solid #e2e8f0"}}>{l}</button>)}
+            </div>
+          </div>
+        </div>
+        <div style={{marginBottom:6}}><div style={{fontSize:9,fontWeight:700,textTransform:"uppercase",color:"#6b7a8d",marginBottom:2}}>Loan Term</div>
+          <div style={{display:"flex",gap:3}}>{TMS.map(t=>
+            <button key={t} onClick={()=>setNewTy(t)} style={{flex:1,padding:"6px",fontSize:10,fontWeight:700,borderRadius:6,cursor:"pointer",background:newTy===t?"#1e40af":"#f1f5f9",color:newTy===t?"#fff":"#475569",border:newTy===t?"2px solid #1e40af":"2px solid #e2e8f0"}}>{t}yr</button>)}</div></div>
+
+        {/* Apply equity toggle */}
+        <div style={{display:"flex",alignItems:"center",gap:8,padding:8,borderRadius:7,background:"#eff6ff",border:"2px solid #93c5fd",marginBottom:6,cursor:"pointer"}} onClick={()=>setApplyEquity(!applyEquity)}>
+          <div style={{width:24,height:14,borderRadius:7,background:applyEquity?"#1e40af":"#cbd5e1",position:"relative",transition:"background .2s",flexShrink:0}}>
+            <div style={{position:"absolute",top:2,left:applyEquity?10:2,width:10,height:10,borderRadius:"50%",background:"#fff",transition:"left .2s"}}/>
+          </div>
+          <div>
+            <div style={{fontSize:10,fontWeight:700,color:"#1e40af"}}>Apply Equity as Down Payment</div>
+            <div style={{fontSize:8,color:"#64748b"}}>{applyEquity?`Using ${$(sellCalc.equity)} equity → ${pc(sellCalc.newDpPct)} down`:"Toggle to apply your net equity toward the new purchase"}</div>
+          </div>
+        </div>
+
+        {/* New home results */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5,marginBottom:5}}>
+          <div style={{borderRadius:7,padding:8,background:"#eff6ff",border:"2px solid #93c5fd",textAlign:"center"}}>
+            <div style={{fontSize:8,color:"#64748b",fontWeight:700}}>DOWN PAYMENT</div>
+            <div style={{fontSize:16,fontWeight:900,color:"#1e40af"}}>{applyEquity?$(sellCalc.newDpAmt):"User-defined"}</div>
+            <div style={{fontSize:8,color:"#64748b"}}>{applyEquity?pc(sellCalc.newDpPct)+" of purchase":""}</div>
+          </div>
+          <div style={{borderRadius:7,padding:8,background:"#faf5ff",border:"2px solid #c4b5fd",textAlign:"center"}}>
+            <div style={{fontSize:8,color:"#64748b",fontWeight:700}}>NEW LOAN AMOUNT</div>
+            <div style={{fontSize:16,fontWeight:900,color:"#7c3aed"}}>{$(sellCalc.newLoan)}</div>
+          </div>
+        </div>
+
+        <Sec title="New Monthly PITI" color="#15803d">
+          <PR label="Principal & Interest" val={sellCalc.newMPI} color="#1e40af" bg="#eff6ff"/>
+          <PR label="Property Tax (state avg)" val={sellCalc.newMTx} color="#dc2626" bg="#fef2f2"/>
+          <PR label="Insurance" val={sellCalc.newMIns} color="#d97706" bg="#fffbeb"/>
+          {sellCalc.newHasPMI&&<PR label="PMI" val={sellCalc.newMPMI} color="#7c3aed" bg="#faf5ff"/>}
+          <div style={{display:"flex",justifyContent:"space-between",padding:"7px 10px",borderRadius:7,background:"#15803d",marginTop:2}}>
+            <span style={{fontSize:11,fontWeight:900,color:"#fff"}}>TOTAL NEW PITI</span>
+            <span style={{fontSize:17,fontWeight:900,color:"#fff"}}>{$(sellCalc.newPiti)}</span>
+          </div>
+        </Sec>
+
+        {/* Side-by-side comparison */}
+        <Sec title="Old vs New Comparison" color="#475569">
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
+            {[{l:"Current PITI",v:c.piti,c:"#dc2626",bg:"#fef2f2"},{l:"New PITI",v:sellCalc.newPiti,c:sellCalc.newPiti<=c.piti?"#16a34a":"#dc2626",bg:sellCalc.newPiti<=c.piti?"#f0fdf4":"#fef2f2"}].map((x,i)=>
+              <div key={i} style={{borderRadius:7,padding:10,background:x.bg,textAlign:"center"}}>
+                <div style={{fontSize:9,fontWeight:700,color:x.c}}>{x.l}</div>
+                <div style={{fontSize:20,fontWeight:900,color:x.c}}>{$(x.v)}</div>
+              </div>)}
+          </div>
+          <div style={{marginTop:6,padding:8,borderRadius:7,background:"#f8fafc",border:"1px solid #e2e8f0",textAlign:"center"}}>
+            <div style={{fontSize:9,color:"#64748b",fontWeight:700}}>MONTHLY CHANGE</div>
+            <div style={{fontSize:18,fontWeight:900,color:sellCalc.newPiti<=c.piti?"#16a34a":"#dc2626"}}>
+              {sellCalc.newPiti<=c.piti?`⬇ Save ${$(c.piti-sellCalc.newPiti)}/mo`:`⬆ Pay ${$(sellCalc.newPiti-c.piti)} more/mo`}
+            </div>
+          </div>
+          <div style={{marginTop:5,padding:6,borderRadius:6,background:"#fffbeb",border:"1px solid #fcd34d"}}>
+            <div style={{fontSize:9,fontWeight:700,color:"#92400e"}}>Cash at Closing (new home)</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4,textAlign:"center",marginTop:4}}>
+              <div><div style={{fontSize:8,color:"#64748b"}}>Down Pmt</div><div style={{fontWeight:900,fontSize:11,color:"#c2410c"}}>{$(applyEquity?sellCalc.newDpAmt:0)}</div></div>
+              <div><div style={{fontSize:8,color:"#64748b"}}>Closing</div><div style={{fontWeight:900,fontSize:11,color:"#c2410c"}}>{$(sellCalc.newClosing)}</div></div>
+              <div><div style={{fontSize:8,color:"#64748b"}}>Total Needed</div><div style={{fontWeight:900,fontSize:11,color:"#c2410c"}}>{$(sellCalc.cashNeeded)}</div></div>
+            </div>
+          </div>
+        </Sec>
+      </Sec>
+    </div>}
+
+    {/* ════════════════════════════════════════════════════════
+        INCOME TAB
+    ════════════════════════════════════════════════════════ */}
     {tab==="income"&&<div>
       <Sec title="State & Filing" color="#7c3aed">
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:6}}>
@@ -238,7 +528,7 @@ export default function App(){
       <Sec title="Tax Summary" color="#7c3aed">
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:4}}>
           {[{l:"Federal",v:c.fedTx,s:pc(c.gross>0?c.fedTx/c.gross:0),bg:"#faf5ff",bc:"#e9d5ff",tc:"#5b21b6"},
-            {l:sd.n,v:c.stTx,s:sd.t==="none"?"No tax":pc(c.gross>0?c.stTx/c.gross:0),bg:"#fdf4ff",bc:"#f0abfc",tc:"#86198f"},
+            {l:sd.n.split(" ")[0],v:c.stTx,s:sd.t==="none"?"No tax":pc(c.gross>0?c.stTx/c.gross:0),bg:"#fdf4ff",bc:"#f0abfc",tc:"#86198f"},
             {l:"FICA",v:c.fica,s:"SS+Med",bg:"#fff7ed",bc:"#fed7aa",tc:"#9a3412"},
             {l:"Take-Home",v:c.netA,s:$(c.netM)+"/mo",bg:"#f0fdf4",bc:"#bbf7d0",tc:"#15803d"}
           ].map((x,i)=><div key={i} style={{borderRadius:6,padding:5,background:x.bg,border:`1px solid ${x.bc}`,textAlign:"center"}}>
@@ -253,6 +543,9 @@ export default function App(){
       </Sec>
     </div>}
 
+    {/* ════════════════════════════════════════════════════════
+        MORTGAGE TAB
+    ════════════════════════════════════════════════════════ */}
     {tab==="mortgage"&&<div>
       <Sec title="Purchase & Loan" color="#1e40af">
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
@@ -298,6 +591,9 @@ export default function App(){
       </Sec>
     </div>}
 
+    {/* ════════════════════════════════════════════════════════
+        MAX LOAN TAB
+    ════════════════════════════════════════════════════════ */}
     {tab==="max"&&<div>
       <Sec title="Maximum Borrowing Power" color="#059669">
         <div style={{padding:6,borderRadius:6,background:"#ecfdf5",border:"1px solid #a7f3d0",marginBottom:8,fontSize:9,color:"#065f46"}}>
@@ -328,6 +624,9 @@ export default function App(){
       </Sec>
     </div>}
 
+    {/* ════════════════════════════════════════════════════════
+        AMORTIZE TAB
+    ════════════════════════════════════════════════════════ */}
     {tab==="amort"&&<div>
       <Sec title="Extra Payment Impact" color="#4A148C">
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
@@ -372,6 +671,9 @@ export default function App(){
       </Sec>
     </div>}
 
+    {/* ════════════════════════════════════════════════════════
+        INVEST TAB
+    ════════════════════════════════════════════════════════ */}
     {tab==="invest"&&<div>
       <Sec title="Pay Down vs Invest" color="#F57F17">
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5,marginBottom:6}}>
@@ -419,6 +721,9 @@ export default function App(){
       </Sec>
     </div>}
 
+    {/* ════════════════════════════════════════════════════════
+        BUDGET TAB
+    ════════════════════════════════════════════════════════ */}
     {tab==="budget"&&<div>
       <Sec title="Obligated Debts" color="#dc2626">
         {dL.map((l,i)=><DR key={i} label={l} value={dV[i]} onChange={v=>uD(i,v)}/>)}
@@ -440,6 +745,87 @@ export default function App(){
       </Sec>
     </div>}
 
+    {/* ════════════════════════════════════════════════════════
+        50/30/20 RULE TAB
+    ════════════════════════════════════════════════════════ */}
+    {tab==="rule"&&<div>
+      {/* Explainer */}
+      <div style={{padding:10,borderRadius:8,background:"linear-gradient(135deg,#0f766e,#0d9488)",color:"#fff",marginBottom:10}}>
+        <div style={{fontSize:13,fontWeight:900,marginBottom:4}}>⚖️ The 50/30/20 Rule</div>
+        <div style={{fontSize:9,lineHeight:1.7,opacity:.95}}>
+          The 50/30/20 rule, popularized by Senator Elizabeth Warren in <em>All Your Worth</em>, is a simple framework to organize your after-tax income into three buckets:
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:5,marginTop:8}}>
+          {[{p:"50%",l:"Needs",d:"Housing, utilities, insurance, min debt payments, groceries",c:"#fbbf24",bg:"#065f46"},
+            {p:"30%",l:"Wants",d:"Dining out, entertainment, gym, subscriptions, hobbies",c:"#818cf8",bg:"#1e1b4b"},
+            {p:"20%",l:"Savings",d:"Emergency fund, retirement, investments, extra debt payoff",c:"#6ee7b7",bg:"#022c22"}
+          ].map((x,i)=><div key={i} style={{borderRadius:6,padding:7,background:x.bg,textAlign:"center"}}>
+            <div style={{fontSize:22,fontWeight:900,color:x.c}}>{x.p}</div>
+            <div style={{fontSize:10,fontWeight:800,color:"#fff"}}>{x.l}</div>
+            <div style={{fontSize:8,color:"#94a3b8",marginTop:2}}>{x.d}</div>
+          </div>)}
+        </div>
+      </div>
+
+      {/* Net income basis */}
+      <div style={{padding:6,borderRadius:6,background:"#f0fdf4",border:"1px solid #bbf7d0",marginBottom:8,textAlign:"center"}}>
+        <div style={{fontSize:9,color:"#64748b"}}>Based on monthly take-home pay</div>
+        <div style={{fontSize:18,fontWeight:900,color:"#16a34a"}}>{$(c.netM)}/month</div>
+        <div style={{fontSize:8,color:"#94a3b8"}}>Pulling income from Income tab • expenses from Budget tab</div>
+      </div>
+
+      {/* Three rule bars */}
+      <Sec title="50% — Needs" color="#0f766e">
+        <div style={{fontSize:8,color:"#64748b",marginBottom:6}}>Includes: PITI, all debts, utilities (electric, gas, water, trash, internet, cell), home maintenance, medical, insurance</div>
+        <RuleBar label="🏠 Needs" actual={ruleCalc.needs} target={ruleCalc.t50} color="#0f766e" pct={ruleCalc.needsPct}/>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4,marginTop:4,textAlign:"center"}}>
+          <div style={{borderRadius:5,padding:5,background:"#f0fdf4"}}><div style={{fontSize:7,color:"#64748b"}}>PITI</div><div style={{fontSize:10,fontWeight:700,color:"#0f766e"}}>{$(c.piti)}</div></div>
+          <div style={{borderRadius:5,padding:5,background:"#fef2f2"}}><div style={{fontSize:7,color:"#64748b"}}>Debts</div><div style={{fontSize:10,fontWeight:700,color:"#dc2626"}}>{$(c.totD)}</div></div>
+          <div style={{borderRadius:5,padding:5,background:"#eff6ff"}}><div style={{fontSize:7,color:"#64748b"}}>Utilities+</div><div style={{fontSize:10,fontWeight:700,color:"#1e40af"}}>{$(ruleCalc.needs-c.piti-c.totD)}</div></div>
+        </div>
+      </Sec>
+
+      <Sec title="30% — Wants" color="#7c3aed">
+        <div style={{fontSize:8,color:"#64748b",marginBottom:6}}>Includes: dining, streaming, gym, gas/fuel, vehicle maintenance, clothing, entertainment, pets, kids, gifts, vacation, other</div>
+        <RuleBar label="🎯 Wants" actual={ruleCalc.wants} target={ruleCalc.t30} color="#7c3aed" pct={ruleCalc.wantsPct}/>
+      </Sec>
+
+      <Sec title="20% — Savings" color="#1e40af">
+        <div style={{fontSize:8,color:"#64748b",marginBottom:6}}>Includes: explicit Savings and Retirement entries from Budget tab. To raise this number, increase those line items.</div>
+        <RuleBar label="💰 Savings" actual={ruleCalc.savings} target={ruleCalc.t20} color="#1e40af" pct={ruleCalc.savingsPct}/>
+        {ruleCalc.savings<ruleCalc.t20&&<div style={{marginTop:4,padding:6,borderRadius:5,background:"#fef2f2",border:"1px solid #fecaca",fontSize:8,color:"#dc2626"}}>
+          ⚠ You're saving {$(ruleCalc.t20-ruleCalc.savings)} less than the 20% target. Consider increasing your Budget tab Savings/Retirement entries.
+        </div>}
+      </Sec>
+
+      {/* Overall score card */}
+      <Sec title="Your 50/30/20 Score" color="#0f172a">
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4,marginBottom:6}}>
+          {[{l:"Needs",a:ruleCalc.needs,t:ruleCalc.t50,c:"#0f766e"},{l:"Wants",a:ruleCalc.wants,t:ruleCalc.t30,c:"#7c3aed"},{l:"Savings",a:ruleCalc.savings,t:ruleCalc.t20,c:"#1e40af"}].map((x,i)=>{
+            const ok=x.a<=x.t;
+            return<div key={i} style={{borderRadius:7,padding:7,background:ok?"#f0fdf4":"#fef2f2",border:`2px solid ${ok?"#bbf7d0":"#fecaca"}`,textAlign:"center"}}>
+              <div style={{fontSize:8,fontWeight:700,color:x.c}}>{x.l}</div>
+              <div style={{fontSize:14,fontWeight:900,color:ok?"#16a34a":"#dc2626"}}>{pc(x.a/Math.max(c.netM,1))}</div>
+              <div style={{fontSize:8,color:"#94a3b8"}}>target: {pc(x.t/Math.max(c.netM,1))}</div>
+              <div style={{fontSize:9}}>{ok?"✓":"⚠"}</div>
+            </div>;
+          })}
+        </div>
+        {/* Unallocated */}
+        {ruleCalc.unallocated>0&&<div style={{padding:6,borderRadius:6,background:"#fffbeb",border:"1px solid #fcd34d",textAlign:"center"}}>
+          <div style={{fontSize:9,fontWeight:700,color:"#92400e"}}>Unallocated / Buffer</div>
+          <div style={{fontSize:14,fontWeight:900,color:"#92400e"}}>{$(ruleCalc.unallocated)}/mo</div>
+          <div style={{fontSize:8,color:"#64748b"}}>Income not assigned to any category above</div>
+        </div>}
+        <div style={{marginTop:6,padding:6,borderRadius:6,background:"#f8fafc",border:"1px solid #e2e8f0",fontSize:8,color:"#64748b"}}>
+          <b>Note:</b> Your Budget tab determines your Wants/Savings totals. The Needs category automatically includes your mortgage (PITI) and all obligated debts. Adjust Budget tab entries to shift your ratios.
+        </div>
+      </Sec>
+    </div>}
+
+    {/* ════════════════════════════════════════════════════════
+        SUMMARY TAB
+    ════════════════════════════════════════════════════════ */}
     {tab==="summary"&&<div>
       <Sec title="Cash Flow" color="#0f172a">
         {[{l:"Net Income",v:c.netM,c:"#16a34a",bg:"#ecfdf5",s:""},
@@ -457,6 +843,18 @@ export default function App(){
       </Sec>
       <Sec title="Breakdown" color="#475569">
         <Br total={c.netM} segs={[{l:"Housing",v:c.piti+ex,c:"#3b82f6"},{l:"Debts",v:c.totD,c:"#ef4444"},{l:"Living",v:c.totE,c:"#f59e0b"},...(c.surplus>0?[{l:"Buffer",v:c.surplus,c:"#22c55e"}]:[])]}/>
+      </Sec>
+      <Sec title="50/30/20 Snapshot" color="#0f766e">
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4}}>
+          {[{l:"Needs",a:ruleCalc.needs,t:ruleCalc.t50,c:"#0f766e"},{l:"Wants",a:ruleCalc.wants,t:ruleCalc.t30,c:"#7c3aed"},{l:"Savings",a:ruleCalc.savings,t:ruleCalc.t20,c:"#1e40af"}].map((x,i)=>{
+            const ok=x.a<=x.t;
+            return<div key={i} style={{borderRadius:6,padding:6,background:ok?"#f0fdf4":"#fef2f2",border:`1px solid ${ok?"#bbf7d0":"#fecaca"}`,textAlign:"center"}}>
+              <div style={{fontSize:8,fontWeight:700,color:x.c}}>{x.l}</div>
+              <div style={{fontSize:12,fontWeight:900,color:ok?"#16a34a":"#dc2626"}}>{pc(x.a/Math.max(c.netM,1))}</div>
+              <div style={{fontSize:7,color:"#94a3b8"}}>vs {pc(x.t/Math.max(c.netM,1))} target</div>
+            </div>;
+          })}
+        </div>
       </Sec>
       <Sec title="Ratios" color="#7c3aed">
         {[{l:"Front-End DTI (Housing ÷ Gross)",v:c.fDTI,t:.28,d:"≤ 28%"},
@@ -480,11 +878,12 @@ export default function App(){
         </div>
       </Sec>
       <div style={{textAlign:"center",marginTop:6}}>
-        <button onClick={()=>genReport(c,{st,fl:flL,ty,lt:ltL,price:pr,dp,cp,sr})}
+        <button onClick={()=>genReport(c,{st,fl:flL,ty,lt:ltL,price:pr,dp,cp,sr},sellCalc,ruleCalc)}
           style={{padding:"8px 20px",borderRadius:8,background:"linear-gradient(135deg,#22c55e,#16a34a)",color:"#fff",fontSize:11,fontWeight:800,border:"none",cursor:"pointer",boxShadow:"0 2px 10px #16a34a40"}}>
           📄 Download Full Report
         </button>
         <div style={{fontSize:8,color:"#94a3b8",marginTop:3}}>Downloads HTML — open and Print → Save as PDF</div>
+        <div style={{fontSize:8,color:"#94a3b8",marginTop:2}}>Report includes: Income, Mortgage, Max Loan, Amortize, Invest, Budget, Sell Analysis & 50/30/20</div>
       </div>
       <div style={{borderRadius:6,padding:6,fontSize:8,background:"#f8fafc",border:"1px solid #e2e8f0",color:"#94a3b8",marginTop:8}}>
         <b>Disclaimer:</b> Estimates only. Consult mortgage professional & tax advisor. State rates approximate. Property tax uses state average — varies by county. Investment returns not guaranteed.
@@ -494,6 +893,3 @@ export default function App(){
     </div>
   </div>);
 }
-
-const TH={padding:"4px 5px",textAlign:"center",color:"#fff",fontSize:8,fontWeight:700,textTransform:"uppercase",whiteSpace:"nowrap"};
-const TD={padding:"3px 5px",borderBottom:"1px solid #f1f5f9",fontSize:9};
