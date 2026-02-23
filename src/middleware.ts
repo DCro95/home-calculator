@@ -12,7 +12,7 @@ export async function middleware(request: NextRequest) {
         getAll() {
           return request.cookies.getAll()
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           )
@@ -27,7 +27,6 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Protected routes — redirect to login if not authenticated
   const protectedPaths = ['/calculator', '/dashboard']
   const isProtected = protectedPaths.some(path =>
     request.nextUrl.pathname.startsWith(path)
@@ -40,7 +39,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // If logged in and visiting login/signup, redirect to calculator
   const authPaths = ['/login', '/signup']
   const isAuthPage = authPaths.some(path =>
     request.nextUrl.pathname.startsWith(path)
