@@ -40,7 +40,7 @@ const TAB_INFO = {
   summary: "Your complete financial health dashboard — monthly cash flow, surplus or shortfall, all four affordability ratios (front-end DTI, back-end DTI, housing-to-net, total expense ratio), and total cash needed to close. Download a full PDF report that combines every tab's data into a single printable document.",
 };
 
-function genReport(c, inp, sellData, ruleData) {
+function genReport(c, inp, sellData, ruleData, budgetData) {
   const sn=STATES[inp.st]?.n||inp.st;
   const now=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
   const rw=(l,v,cl="")=>`<tr class="${cl}"><td>${l}</td><td class="n">${v}</td></tr>`;
@@ -51,12 +51,46 @@ function genReport(c, inp, sellData, ruleData) {
     return`<tr class="${ok?'':'w'}"><td>${label}</td><td class="n">${$(actual)}</td><td class="n">${$(target)}</td><td class="n" style="color:${ok?'#16a34a':'#dc2626'}">${pc(pct)} ${ok?'✓':'⚠'}</td></tr>`;
   };
 
+  // Budget detail helpers
+  const {dL:bdL,dV:bdV,eL:beL,ec:bEc}=budgetData||{};
+  const debtRows=bdL&&bdV?bdL.map((l,i)=>bdV[i]>0?`<tr><td>${l}</td><td class="n">${$(bdV[i])}</td></tr>`:'').join(''):'';
+
+  // Amortization rows (yearly)
+  const TH2='padding:4px 5px;text-align:center;color:#fff;font-size:9px;font-weight:700;text-transform:uppercase';
+  const amYrRows=Array.from({length:inp.ty},(_,idx)=>{
+    const s0=idx*12,e0=Math.min(s0+12,c.am.std.length);
+    const sl=c.am.std.slice(s0,e0),el=c.am.ext.slice(s0,e0);
+    const totPmt=sl.reduce((a,s)=>a+s.p,0);
+    const totPr=sl.reduce((a,s)=>a+s.pr,0);
+    const totIt=sl.reduce((a,s)=>a+s.it,0);
+    const bal=sl[sl.length-1]?.b||0;
+    const extBal=el[el.length-1]?.b||0;
+    const saved=(sl[sl.length-1]?.ci||0)-(el[el.length-1]?.ci||0);
+    const bg=idx%2===0?'#fff':'#f8fafc';
+    const extCols=c.extra>0?`<td style="text-align:right;color:#4A148C;font-weight:700">${$(extBal)}</td><td style="text-align:right;color:#16a34a;font-weight:700">${$(saved)}</td>`:'';
+    return`<tr style="background:${bg}"><td style="padding:3px 5px">Yr ${idx+1}</td><td style="padding:3px 5px;text-align:right">${$(totPmt)}</td><td style="padding:3px 5px;text-align:right;color:#1e40af">${$(totPr)}</td><td style="padding:3px 5px;text-align:right;color:#dc2626">${$(totIt)}</td><td style="padding:3px 5px;text-align:right;font-weight:700">${$(bal)}</td>${extCols}</tr>`;
+  }).join('');
+
+  // Invest rows
+  const invRows=c.inv.map((v,i)=>{
+    const ye=(i+1)*12-1;
+    const sb=c.am.std[Math.min(ye,c.am.std.length-1)]?.b||0;
+    const eb=c.am.ext[Math.min(ye,c.am.ext.length-1)]?.b||0;
+    const bg=i%2===0?'#fff':'#f8fafc';
+    return`<tr style="background:${bg}"><td style="padding:3px 5px">${v.y}</td><td style="padding:3px 5px;text-align:right">${$(v.c)}</td><td style="padding:3px 5px;text-align:right;color:#92400e;font-weight:700">${$(v.v)}</td><td style="padding:3px 5px;text-align:right;color:#d97706">${$(v.g)}</td><td style="padding:3px 5px;text-align:right">${$(sb)}</td><td style="padding:3px 5px;text-align:right;color:#4A148C;font-weight:700">${$(eb)}</td></tr>`;
+  }).join('');
+
+  // Split expense rows into two columns
+  const half=beL?Math.ceil(beL.length/2):0;
+  const expRowsLeft=beL&&bEc?beL.slice(0,half).map((l,i)=>bEc[i]>0?`<tr><td>${l}${i===12?' <em style="color:#16a34a;font-size:9px">(auto)</em>':''}</td><td class="n">${$(bEc[i])}</td></tr>`:'').join(''):'';
+  const expRowsRight=beL&&bEc?beL.slice(half).map((l,i)=>{const ri=i+half;return bEc[ri]>0?`<tr><td>${l}</td><td class="n">${$(bEc[ri])}</td></tr>`:''}).join(''):'';
+
   const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Home Affordability Report</title>
 <style>@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700;900&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}body{font-family:'Source Sans 3',sans-serif;color:#1e293b;padding:32px;max-width:820px;margin:0 auto;font-size:11px;line-height:1.5}
 h1{font-size:22px;font-weight:900;color:#0f172a;border-bottom:3px solid #1e40af;padding-bottom:6px;margin-bottom:4px}
 h2{font-size:13px;font-weight:800;color:#fff;background:#1e293b;padding:5px 10px;margin:14px 0 4px;border-radius:4px}
-h2.g{background:#15803d}h2.r{background:#b91c1c}h2.p{background:#4a148c}h2.o{background:#c2410c}h2.teal{background:#0f766e}
+h2.g{background:#15803d}h2.r{background:#b91c1c}h2.p{background:#4a148c}h2.o{background:#c2410c}h2.teal{background:#0f766e}h2.amber{background:#b45309}
 .sub{font-size:10px;color:#64748b;margin-bottom:10px}.dt{font-size:10px;color:#94a3b8;margin-bottom:14px}
 table{width:100%;border-collapse:collapse;margin-bottom:8px;font-size:11px}td{padding:3px 8px;border-bottom:1px solid #f1f5f9}
 td.n{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
@@ -76,22 +110,35 @@ tr.w td{background:#fef2f2;color:#dc2626}tr.hl td{background:#eff6ff;font-weight
 .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:6px 0}.g3 .bx{margin:0}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0}.g2 .bx{margin:0}
 .nt{font-size:9px;color:#94a3b8;margin-top:14px;padding-top:8px;border-top:1px solid #e2e8f0}
-.bar-wrap{background:#e2e8f0;border-radius:5px;height:14px;overflow:hidden;margin:4px 0}
-.bar-fill{height:100%;border-radius:5px;display:flex;align-items:center;padding:0 4px;font-size:8px;font-weight:700;color:#fff}
-@media print{body{padding:16px;font-size:10px}h2{break-after:avoid}table{break-inside:avoid}.tc{break-inside:avoid}}
+.toc{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:10px}
+.toc h3{font-size:11px;font-weight:800;color:#0f172a;margin-bottom:6px}
+.toc ol{padding-left:16px;line-height:1.8;color:#475569}
+.page-break{page-break-before:always;margin-top:20px}
+@media print{body{padding:16px;font-size:10px}h2{break-after:avoid}table{break-inside:avoid}.tc{break-inside:avoid}.page-break{page-break-before:always}}
 </style></head><body>
 <h1>🏠 Home Affordability Report</h1>
 <div class="sub">${sn} • ${inp.fl} Filing • ${inp.ty}-Year ${inp.lt}</div>
 <div class="dt">Generated ${now}</div>
 
+<div class="toc"><h3>📋 Report Contents</h3><ol>
+<li>Income &amp; Taxes + Purchase &amp; Loan</li>
+<li>Maximum Borrowing Power</li>
+<li>Monthly Cash Flow &amp; Affordability Ratios</li>
+${sellData&&sellData.equity>0?'<li>Sell &amp; Move Up Analysis</li>':''}
+<li>Budget Detail — Debts &amp; Expenses (all line items)</li>
+<li>50/30/20 Budget Analysis</li>
+<li>${inp.ty}-Year Amortization Schedule${c.extra>0?' with Extra Payment':''}</li>
+${c.extra>0?`<li>Pay Down vs Invest Comparison (${inp.sr}% return)</li>`:''}
+</ol></div>
+
 <div class="tc"><div>
-<h2>Income & Taxes</h2><table>
+<h2>💰 Income & Taxes</h2><table>
 ${rw("Household Gross Income",$(c.gross))}${rw("Pre-Tax Deductions",$(c.pretax))}${rw("Taxable Income",$(c.taxable))}
 ${hd("TAX BREAKDOWN")}${rw("Federal Income Tax",$(c.fedTx))}${rw(sn+" State Tax",$(c.stTx))}${rw("FICA (SS + Medicare)",$(c.fica))}
 ${rw("Total Annual Tax",$(c.totTx),"hl")}${rw("Effective Rate",pc(c.gross>0?c.totTx/c.gross:0))}
 ${rw("Annual Take-Home",$(c.netA),"t")}${rw("Monthly Take-Home",$(c.netM),"t")}
 </table></div><div>
-<h2>Purchase & Loan</h2><table>
+<h2>🏠 Purchase & Loan</h2><table>
 ${rw("Home Price",$(inp.price))}${rw("Down Payment ("+inp.dp+"%)",$(c.dpAmt))}${rw("Loan Amount",$(c.loan))}
 ${rw("Interest Rate",(c.rate*100).toFixed(3)+"%")}${rw("Loan Term",inp.ty+" years")}
 ${rw("Closing Costs (~"+inp.cp+"%)",$(c.closing))}${rw("Total Cash Needed",$(c.dpAmt+c.closing),"hl")}
@@ -99,59 +146,128 @@ ${hd("MONTHLY PITI")}${rw("Principal & Interest",$2(c.mPI))}${rw("Property Tax",
 ${c.hasPMI?rw("PMI",$2(c.mPMI)):""}${rw("TOTAL MONTHLY PITI",$(c.piti),"t")}${rw("Total Interest Over Loan",$(c.am.tiS))}
 </table></div></div>
 
-<h2 class="g">Maximum Borrowing Power</h2>
+<h2 class="g">🎯 Maximum Borrowing Power</h2>
 <div class="g3">
 <div class="bx g"><div class="lb">Max Home (28% Gross DTI)</div><div class="big">${$(c.mx28)}</div></div>
 <div class="bx g"><div class="lb">Max Home (45% Gross DTI)</div><div class="big">${$(c.mx45)}</div></div>
 <div class="bx"><div class="lb">Max Home (30% Net Income)</div><div class="big">${$(c.mxN)}</div></div>
 </div>
+<table style="margin-top:4px;font-size:10px">
+<tr class="h"><td>Method</td><td class="n">Max Home</td><td class="n">Max Loan</td><td class="n">Max PITI/mo</td><td class="n">Status vs ${$(inp.price)}</td></tr>
+<tr><td>Conservative — 28% Front-End DTI</td><td class="n">${$(Math.max(c.mx28,0))}</td><td class="n">${$(Math.max(c.mx28*(1-inp.dp/100),0))}</td><td class="n">${$(Math.max(c.grM*.28,0))}</td><td class="n" style="color:${inp.price<=c.mx28?'#16a34a':'#dc2626'}">${inp.price<=c.mx28?'✓ Under limit':'⚠ Over limit'}</td></tr>
+<tr><td>Aggressive — 45% Back-End DTI</td><td class="n">${$(Math.max(c.mx45,0))}</td><td class="n">${$(Math.max(c.mx45*(1-inp.dp/100),0))}</td><td class="n">${$(Math.max(c.grM*.45-c.totD,0))}</td><td class="n" style="color:${inp.price<=c.mx45?'#16a34a':'#dc2626'}">${inp.price<=c.mx45?'✓ Under limit':'⚠ Over limit'}</td></tr>
+<tr><td>Conservative — 30% of Net Take-Home</td><td class="n">${$(Math.max(c.mxN,0))}</td><td class="n">${$(Math.max(c.mxN*(1-inp.dp/100),0))}</td><td class="n">${$(Math.max(c.netM*.3,0))}</td><td class="n" style="color:${inp.price<=c.mxN?'#16a34a':'#dc2626'}">${inp.price<=c.mxN?'✓ Under limit':'⚠ Over limit'}</td></tr>
+</table>
 
-<h2>Monthly Cash Flow & Budget</h2><table>
+<h2>💵 Monthly Cash Flow</h2><table>
 ${rw("Monthly Net Income",$(c.netM))}${rw("Housing (PITI)","−"+$(c.piti))}
 ${c.extra>0?rw("Extra Mortgage Payment","−"+$(c.extra)):""}
 ${rw("Obligated Debts","−"+$(c.totD))}${rw("Discretionary Expenses","−"+$(c.totE))}
 ${rw(c.surplus>=0?"Monthly Surplus":"Monthly Shortfall",$(c.surplus),c.surplus>=0?"t":"w")}
 </table>
 
-<h2>Affordability Ratios</h2>
+<h2>📊 Affordability Ratios</h2>
 ${rt("Front-End DTI (Housing ÷ Gross)",c.fDTI,.28,"Lender guideline ≤ 28%")}
 ${rt("Back-End DTI (Housing+Debts ÷ Gross)",c.bDTI,.45,"Conventional max ≤ 45%")}
 ${rt("Housing-to-Net Ratio",c.hNet,.30,"Comfort target ≤ 30%")}
 ${rt("Total Expense-to-Net",c.eRat,.85,"Target ≤ 85% for 15%+ buffer")}
 
 ${sellData&&sellData.equity>0?`
-<h2 class="o">Sell & Move Up Analysis</h2>
+<h2 class="o">🏡 Sell & Move Up Analysis</h2>
+<div class="tc"><div>
 <table>
 ${rw("Current Home Value",$(sellData.curVal))}${rw("Remaining Mortgage",$(sellData.curOwed))}
-${rw("Selling Costs ("+sellData.sellCostPct+"%)",$(sellData.sellCosts))}${rw("Net Equity",$(sellData.equity),"hl")}
-</table>
-<div class="g3">
-<div class="bx g"><div class="lb">New Purchase Price</div><div class="big">${$(sellData.newPr)}</div></div>
-<div class="bx"><div class="lb">New Down Payment</div><div class="big">${pc(sellData.newDpPct)}</div></div>
-<div class="bx ${sellData.newPiti<c.piti?'g':'r'}"><div class="lb">New Monthly PITI</div><div class="big">${$(sellData.newPiti)}</div></div>
-</div>`:""}
-
-${ruleData?`
-<h2 class="teal">50/30/20 Budget Analysis</h2>
+${rw("Selling Costs ("+sellData.sellCostPct+"%)","−"+$(sellData.sellCosts))}${rw("Net Equity",$(sellData.equity),"hl")}
+</table></div><div>
 <table>
+${rw("New Purchase Price",$(sellData.newPr))}${rw("New Loan Type",sellData.newLt==="fixed"?"Fixed Rate":"7/1 ARM")}
+${rw("New Loan Term",sellData.newTy+" years")}${rw("New Loan Amount",$(sellData.newLoan),"hl")}
+${hd("NEW MONTHLY PITI")}${rw("Principal & Interest",$2(sellData.newMPI))}${rw("Property Tax",$2(sellData.newMTx))}${rw("Insurance",$2(sellData.newMIns))}
+${sellData.newHasPMI?rw("PMI",$2(sellData.newMPMI)):""}${rw("Total New PITI",$(sellData.newPiti),"t")}
+</table></div></div>
+<div class="g3" style="margin-top:6px">
+<div class="bx r"><div class="lb">Current PITI</div><div class="big">${$(c.piti)}</div></div>
+<div class="bx ${sellData.newPiti<=c.piti?'g':'r'}"><div class="lb">New PITI</div><div class="big">${$(sellData.newPiti)}</div></div>
+<div class="bx ${sellData.newPiti<=c.piti?'g':'r'}"><div class="lb">Monthly Change</div><div class="big">${sellData.newPiti<=c.piti?'⬇ −'+$(c.piti-sellData.newPiti):'⬆ +'+$(sellData.newPiti-c.piti)}</div></div>
+</div>
+<table style="margin-top:6px"><tr class="h"><td colspan="2">CASH AT CLOSING (NEW HOME)</td></tr>
+${rw("Down Payment Applied from Equity",$(sellData.newDpAmt)+" ("+pc(sellData.newDpPct)+")")}
+${rw("Closing Costs",$(sellData.newClosing))}${rw("Total Cash Needed at Closing",$(sellData.cashNeeded),"hl")}</table>`:""}
+
+<div class="page-break"></div>
+<h2 style="background:#dc2626">📋 Budget Detail — Obligated Debts</h2>
+<table>
+<tr class="h"><td>Debt Item</td><td class="n">Monthly Amount</td></tr>
+${debtRows||'<tr><td style="color:#94a3b8;font-style:italic">No debts entered</td><td class="n">$0</td></tr>'}
+${rw("Total Obligated Debts",$(c.totD),"t")}
+</table>
+
+<h2 style="background:#b45309">📋 Budget Detail — Discretionary Expenses</h2>
+<div class="tc">
+<div><table><tr class="h"><td>Expense</td><td class="n">Monthly</td></tr>${expRowsLeft}</table></div>
+<div><table><tr class="h"><td>Expense</td><td class="n">Monthly</td></tr>${expRowsRight}</table></div>
+</div>
+<table>${rw("Total Discretionary Expenses",$(c.totE),"t")}${rw("Total Monthly Outflows",$(c.totOut),"hl")}</table>
+
+<h2 class="teal">⚖️ 50/30/20 Budget Analysis</h2>
+${ruleData?`<table>
 <tr class="h"><td>Category</td><td class="n">Actual/mo</td><td class="n">Target/mo</td><td class="n">% of Net</td></tr>
 ${ruleRow("🏠 Needs (50% target)",ruleData.needs,ruleData.t50,ruleData.needs/c.netM)}
 ${ruleRow("🎯 Wants (30% target)",ruleData.wants,ruleData.t30,ruleData.wants/c.netM)}
 ${ruleRow("💰 Savings (20% target)",ruleData.savings,ruleData.t20,ruleData.savings/c.netM)}
-</table>`:""}
+</table>
+<div class="g3">
+<div class="bx ${ruleData.needs<=ruleData.t50?'g':'r'}"><div class="lb">Needs — ${pc(ruleData.needs/c.netM)}</div><div class="big">${$(ruleData.needs)}</div><div style="font-size:9px;color:#64748b">target ≤ ${$(ruleData.t50)}</div></div>
+<div class="bx ${ruleData.wants<=ruleData.t30?'g':'r'}"><div class="lb">Wants — ${pc(ruleData.wants/c.netM)}</div><div class="big">${$(ruleData.wants)}</div><div style="font-size:9px;color:#64748b">target ≤ ${$(ruleData.t30)}</div></div>
+<div class="bx ${ruleData.savings>=ruleData.t20?'g':'r'}"><div class="lb">Savings — ${pc(ruleData.savings/c.netM)}</div><div class="big">${$(ruleData.savings)}</div><div style="font-size:9px;color:#64748b">target ≥ ${$(ruleData.t20)}</div></div>
+</div>`:''}
+<div class="bx" style="margin-top:8px"><div class="lb">6-Month Emergency Fund Target</div><div class="big" style="color:#92400e">${$(c.totOut*6)}</div></div>
 
-${c.extra>0?`<h2 class="p">Extra Payment & Investment Analysis</h2>
-<div class="g2">
-<div class="bx g"><div class="lb">Pay Down: Interest Saved</div><div class="big">${$(c.intSv)}</div>
-<div style="font-size:10px;color:#64748b">Payoff: ${(c.am.po/12).toFixed(1)} yrs (${((inp.ty*12-c.am.po)/12).toFixed(1)} early)</div></div>
-<div class="bx"><div class="lb">Invest: Portfolio at Year ${inp.ty}</div><div class="big">${$(c.invEnd.v)}</div>
-<div style="font-size:10px;color:#64748b">${inp.sr}% return • Gains: ${$(c.invEnd.g)}</div></div></div>`:""}
+<div class="page-break"></div>
+<h2 class="p">📅 ${inp.ty}-Year Amortization Schedule${c.extra>0?' — '+$(c.extra)+'/mo Extra Payment':''}</h2>
+${c.extra>0?`<div style="display:flex;gap:10px;margin-bottom:6px;font-size:10px">
+<span style="padding:4px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:5px"><b style="color:#15803d">Interest Saved:</b> ${$(c.intSv)}</span>
+<span style="padding:4px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:5px"><b style="color:#15803d">Payoff in:</b> ${(c.am.po/12).toFixed(1)} yrs (${((inp.ty*12-c.am.po)/12).toFixed(1)} yrs early)</span>
+</div>`:''}
+<table style="font-size:10px">
+<thead><tr>
+<th style="${TH2};background:#1e293b">Year</th>
+<th style="${TH2};background:#1e40af">Ann. Pmt</th>
+<th style="${TH2};background:#1e40af">Principal</th>
+<th style="${TH2};background:#dc2626">Interest</th>
+<th style="${TH2};background:#1e40af">Balance</th>
+${c.extra>0?`<th style="${TH2};background:#4A148C">Extra Bal</th><th style="${TH2};background:#15803d">Int. Saved</th>`:''}
+</tr></thead>
+<tbody>${amYrRows}</tbody>
+</table>
 
-<div class="bx" style="margin-top:10px"><div class="lb">6-Month Emergency Fund Target</div><div class="big" style="color:#92400e">${$(c.totOut*6)}</div></div>
+${c.extra>0?`
+<div class="page-break"></div>
+<h2 class="p">📈 Pay Down vs Invest — ${$(c.extra)}/mo Extra at ${inp.sr}% Annual Return</h2>
+<div class="g2" style="margin-bottom:8px">
+<div class="bx g"><div class="lb">Pay Down Mortgage: Interest Saved</div><div class="big">${$(c.intSv)}</div><div style="font-size:9px;color:#64748b">${(c.rate*100).toFixed(2)}% guaranteed • Payoff ${(c.am.po/12).toFixed(1)} yrs</div></div>
+<div class="bx ${c.invEnd.v>c.intSv?'o':'g'}"><div class="lb">Invest in Market: Portfolio at Yr ${inp.ty}</div><div class="big">${$(c.invEnd.v)}</div><div style="font-size:9px;color:#64748b">Gains: ${$(c.invEnd.g)} • ${inp.sr}% return assumed</div></div>
+</div>
+<div style="text-align:center;padding:8px;border-radius:7px;background:${c.invEnd.v>c.intSv?'#fffbeb':'#f0fdf4'};border:2px solid ${c.invEnd.v>c.intSv?'#f59e0b':'#16a34a'};margin-bottom:8px;font-size:13px;font-weight:900;color:${c.invEnd.v>c.intSv?'#92400e':'#15803d'}">
+${c.invEnd.v>c.intSv?'📈 Investing wins by '+$(c.invEnd.v-c.intSv):'🏠 Paying down mortgage wins by '+$(c.intSv-c.invEnd.v)}
+</div>
+<table style="font-size:10px">
+<thead><tr>
+<th style="${TH2};background:#1e293b">Year</th>
+<th style="${TH2};background:#b45309">Invested</th>
+<th style="${TH2};background:#b45309">Portfolio</th>
+<th style="${TH2};background:#b45309">Gains</th>
+<th style="${TH2};background:#1e40af">Std Balance</th>
+<th style="${TH2};background:#4A148C">Extra-Pmt Bal</th>
+</tr></thead>
+<tbody>${invRows}</tbody>
+</table>`:''}
+
 <div class="nt"><b>Disclaimer:</b> Educational/planning purposes only — not financial, legal, or tax advice. Consult a licensed mortgage professional, tax advisor, and financial planner. Tax calculations use 2025 federal brackets and approximate state rates. Property tax uses ${sn} average effective rate (${(STATES[inp.st]?.p*100||0).toFixed(2)}%) — actual rates vary by county. Investment returns not guaranteed.</div>
 </body></html>`;
   const b=new Blob([html],{type:'text/html'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='Home_Affordability_Report.html';a.click();URL.revokeObjectURL(u);
 }
+
 
 function I({label,value,onChange,prefix="$",suffix,step=100,help}){
   return(<div style={{marginBottom:7}}>
@@ -335,7 +451,7 @@ export default function App(){
           <div style={{fontSize:14,fontWeight:900,color:"#fff"}}>🏠 Home Affordability Calculator</div>
           <div style={{fontSize:9,color:"#93c5fd",marginTop:1}}>Mortgage, tax & budget analysis • All 50 states + DC</div>
         </div>
-        <button onClick={e=>{e.stopPropagation();genReport(c,{st,fl:flL,ty,lt:ltL,price:pr,dp,cp,sr},sellCalc,ruleCalc);}}
+        <button onClick={e=>{e.stopPropagation();genReport(c,{st,fl:flL,ty,lt:ltL,price:pr,dp,cp,sr},sellCalc,ruleCalc,{dL,dV,eL,ec:c.ec});}}
           style={{padding:"6px 12px",borderRadius:7,background:"linear-gradient(135deg,#22c55e,#16a34a)",color:"#fff",fontSize:9,fontWeight:800,border:"none",cursor:"pointer",boxShadow:"0 2px 8px #16a34a40"}}>📄 Download Report</button>
       </div>
     </div>
@@ -878,7 +994,7 @@ export default function App(){
         </div>
       </Sec>
       <div style={{textAlign:"center",marginTop:6}}>
-        <button onClick={()=>genReport(c,{st,fl:flL,ty,lt:ltL,price:pr,dp,cp,sr},sellCalc,ruleCalc)}
+        <button onClick={()=>genReport(c,{st,fl:flL,ty,lt:ltL,price:pr,dp,cp,sr},sellCalc,ruleCalc,{dL,dV,eL,ec:c.ec})}
           style={{padding:"8px 20px",borderRadius:8,background:"linear-gradient(135deg,#22c55e,#16a34a)",color:"#fff",fontSize:11,fontWeight:800,border:"none",cursor:"pointer",boxShadow:"0 2px 10px #16a34a40"}}>
           📄 Download Full Report
         </button>
