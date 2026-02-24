@@ -506,15 +506,114 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── LEGAL DISCLAIMER ── */}
+      <section style={{
+        borderTop:'1px dashed rgba(255,255,255,0.07)',
+        padding:'48px 40px',
+        background:'rgba(6,10,20,0.6)',
+      }}>
+        <div style={{ maxWidth:820, margin:'0 auto' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:18 }}>
+            <div style={{
+              padding:'3px 10px', borderRadius:4,
+              background:'rgba(220,38,38,0.12)', border:'1px solid rgba(220,38,38,0.25)',
+              fontSize:9, fontWeight:800, letterSpacing:'0.12em', textTransform:'uppercase',
+              color:'rgba(248,113,113,0.8)',
+            }}>
+              Legal Disclaimer
+            </div>
+          </div>
+
+          <p style={{
+            fontSize:11, lineHeight:1.85, color:'rgba(180,195,195,0.38)',
+            fontWeight:400,
+          }}>
+            <strong style={{ color:'rgba(200,215,215,0.55)', fontWeight:700 }}>IMPORTANT NOTICE — PLEASE READ CAREFULLY.</strong>{' '}
+            HomeCalc (the &quot;Platform&quot;) and all computational outputs, projections, estimates, amortization schedules, tax calculations,
+            debt-to-income analyses, investment comparisons, and related data generated thereby (collectively, the &quot;Outputs&quot;) are
+            provided solely for <strong style={{ color:'rgba(200,215,215,0.45)' }}>general informational and educational purposes</strong> and
+            do <strong style={{ color:'rgba(200,215,215,0.45)' }}>not</strong> constitute, and shall not be construed as constituting,
+            financial advice, investment advice, mortgage advice, tax advice, legal advice, or any other form of professional advisory service
+            regulated under applicable federal or state law.
+          </p>
+
+          <p style={{
+            fontSize:11, lineHeight:1.85, color:'rgba(180,195,195,0.38)',
+            fontWeight:400, marginTop:14,
+          }}>
+            All tax bracket data, standard deduction figures, FICA thresholds, state income tax rates, property tax averages,
+            private mortgage insurance benchmarks, and interest rate assumptions reflected within the Platform are based upon
+            publicly available information current as of the <strong style={{ color:'rgba(200,215,215,0.45)' }}>2025 tax year</strong> and
+            are subject to change without notice by the relevant governmental or regulatory authority.
+            The operator of this Platform makes <strong style={{ color:'rgba(200,215,215,0.45)' }}>no representation or warranty</strong>,
+            express or implied, as to the accuracy, completeness, timeliness, or fitness for any particular purpose of such data.
+            State and local property tax rates reflected herein represent <strong style={{ color:'rgba(200,215,215,0.45)' }}>statewide averages only</strong> and
+            may differ materially from the actual millage rate applicable to any specific parcel, municipality, or taxing jurisdiction.
+            Users are solely responsible for independently verifying all figures with the applicable taxing authority, mortgage lender,
+            licensed real estate professional, and/or certified public accountant prior to making any financial decision.
+          </p>
+
+          <p style={{
+            fontSize:11, lineHeight:1.85, color:'rgba(180,195,195,0.38)',
+            fontWeight:400, marginTop:14,
+          }}>
+            THE PLATFORM IS PROVIDED &quot;AS IS&quot; AND &quot;AS AVAILABLE&quot; WITHOUT WARRANTY OF ANY KIND.
+            TO THE FULLEST EXTENT PERMITTED BY APPLICABLE LAW, THE OPERATOR OF THIS PLATFORM, ITS AFFILIATES,
+            OFFICERS, DIRECTORS, EMPLOYEES, AGENTS, LICENSORS, AND SERVICE PROVIDERS EXPRESSLY DISCLAIM ALL LIABILITY —
+            WHETHER ARISING IN CONTRACT, TORT (INCLUDING NEGLIGENCE), STRICT LIABILITY, OR OTHERWISE — FOR ANY DIRECT,
+            INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES ARISING OUT OF OR IN ANY WAY
+            RELATED TO YOUR ACCESS TO OR USE OF, OR INABILITY TO ACCESS OR USE, THE PLATFORM OR ANY OUTPUTS GENERATED THEREBY,
+            INCLUDING WITHOUT LIMITATION ANY FINANCIAL LOSS, LOSS OF PROFITS, LOSS OF BUSINESS, OR LOSS OF DATA,
+            EVEN IF THE OPERATOR HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+          </p>
+
+          <p style={{
+            fontSize:11, lineHeight:1.85, color:'rgba(180,195,195,0.38)',
+            fontWeight:400, marginTop:14,
+          }}>
+            Nothing contained within this Platform establishes or is intended to establish a fiduciary relationship,
+            attorney-client relationship, broker-client relationship, or any other professional advisory relationship between
+            the operator and any user. The Outputs do not account for your individual financial circumstances, creditworthiness,
+            risk tolerance, investment objectives, tax situation, or other personal factors that a qualified professional would
+            consider in providing personalized advice. <strong style={{ color:'rgba(200,215,215,0.45)' }}>You should always consult
+            a licensed mortgage professional, a Certified Public Accountant (CPA) or tax attorney, a Registered Investment Adviser (RIA),
+            and/or a licensed real estate attorney</strong> before entering into any financial transaction or commitment.
+          </p>
+
+          <p style={{
+            fontSize:11, lineHeight:1.85, color:'rgba(180,195,195,0.38)',
+            fontWeight:400, marginTop:14,
+          }}>
+            Investment return projections included within the Platform are purely hypothetical, based upon user-defined
+            assumed rates of return, and are not predictive of future performance. <strong style={{ color:'rgba(200,215,215,0.45)' }}>Past
+            performance of any index, fund, or asset class is not indicative of future results.</strong> All investments involve
+            risk, including the possible loss of principal. By accessing and using this Platform, you acknowledge that you have
+            read, understood, and agree to be bound by the{' '}
+            <Link href="/terms" style={{ color:'rgba(100,210,200,0.6)', textDecoration:'underline', textUnderlineOffset:2 }}>
+              Terms of Service and User Agreement
+            </Link>
+            , and that your use of any Output is entirely at your own risk.
+          </p>
+        </div>
+      </section>
+
       {/* ── FOOTER ── */}
       <footer style={{
         borderTop:'1px dashed rgba(255,255,255,0.07)',
-        padding:'18px 40px',
-        display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:8,
+        padding:'20px 40px',
+        display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:10,
       }}>
         <span style={{ fontSize:12, fontWeight:900, color:'rgba(208,216,216,0.22)', letterSpacing:'-0.02em' }}>🏠 HomeCalc</span>
-        <span style={{ fontSize:10, color:'rgba(208,216,216,0.16)' }}>Not financial advice. Consult a licensed mortgage professional.</span>
-        <span style={{ fontSize:10, color:'rgba(208,216,216,0.16)' }}>© 2026</span>
+        <div style={{ display:'flex', gap:20, alignItems:'center' }}>
+          <Link href="/terms" style={{ fontSize:10, color:'rgba(208,216,216,0.28)', textDecoration:'none', transition:'color 0.2s' }}
+            onMouseEnter={e=>((e.currentTarget as HTMLElement).style.color='rgba(208,216,216,0.7)')}
+            onMouseLeave={e=>((e.currentTarget as HTMLElement).style.color='rgba(208,216,216,0.28)')}>
+            Terms of Service
+          </Link>
+          <span style={{ fontSize:10, color:'rgba(208,216,216,0.12)' }}>|</span>
+          <span style={{ fontSize:10, color:'rgba(208,216,216,0.18)' }}>© 2026 HomeCalc. All rights reserved.</span>
+        </div>
+        <span style={{ fontSize:10, color:'rgba(208,216,216,0.16)' }}>For informational use only. Not financial advice.</span>
       </footer>
     </div>
   )
