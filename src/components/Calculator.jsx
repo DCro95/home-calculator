@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 
 const STATES={AL:{n:"Alabama",t:"prog",r:[[0,500,.02],[500,3e3,.04],[3e3,1/0,.05]],p:.0033},AK:{n:"Alaska",t:"none",r:[],p:.0098},AZ:{n:"Arizona",t:"flat",r:.025,p:.0055},AR:{n:"Arkansas",t:"prog",r:[[0,4400,.02],[4400,8800,.04],[8800,1/0,.044]],p:.0052},CA:{n:"California",t:"prog",r:[[0,20198,.01],[20198,47884,.02],[47884,75576,.04],[75576,104910,.06],[104910,132590,.08],[132590,677278,.093],[677278,812728,.103],[812728,1354550,.113],[1354550,1/0,.123]],p:.0071},CO:{n:"Colorado",t:"flat",r:.044,p:.0049},CT:{n:"Connecticut",t:"prog",r:[[0,1e4,.03],[1e4,5e4,.05],[5e4,1e5,.055],[1e5,2e5,.06],[2e5,25e4,.065],[25e4,5e5,.069],[5e5,1/0,.0699]],p:.0163},DE:{n:"Delaware",t:"prog",r:[[0,2e3,0],[2e3,5e3,.022],[5e3,1e4,.039],[1e4,2e4,.048],[2e4,25e3,.052],[25e3,6e4,.0555],[6e4,1/0,.066]],p:.0043},FL:{n:"Florida",t:"none",r:[],p:.008},GA:{n:"Georgia",t:"prog",r:[[0,750,.01],[750,2250,.02],[2250,3750,.03],[3750,5250,.04],[5250,7e3,.05],[7e3,1/0,.0549]],p:.0072},HI:{n:"Hawaii",t:"prog",r:[[0,2400,.014],[2400,4800,.032],[4800,9600,.055],[9600,14400,.064],[14400,19200,.068],[19200,24e3,.072],[24e3,36e3,.076],[36e3,48e3,.079],[48e3,15e4,.0825],[15e4,175e3,.09],[175e3,2e5,.1],[2e5,1/0,.11]],p:.0032},ID:{n:"Idaho",t:"flat",r:.058,p:.0053},IL:{n:"Illinois",t:"flat",r:.0495,p:.0173},IN:{n:"Indiana",t:"flat",r:.0305,p:.0075},IA:{n:"Iowa",t:"prog",r:[[0,6210,.044],[6210,31050,.0482],[31050,1/0,.057]],p:.0132},KS:{n:"Kansas",t:"prog",r:[[0,15e3,.031],[15e3,3e4,.0525],[3e4,1/0,.057]],p:.0122},KY:{n:"Kentucky",t:"flat",r:.04,p:.0072},LA:{n:"Louisiana",t:"prog",r:[[0,12500,.0185],[12500,5e4,.035],[5e4,1/0,.0425]],p:.0055},ME:{n:"Maine",t:"prog",r:[[0,24500,.058],[24500,58050,.0675],[58050,1/0,.0715]],p:.0108},MD:{n:"Maryland",t:"prog",r:[[0,1e3,.02],[1e3,2e3,.03],[2e3,3e3,.04],[3e3,1e5,.0475],[1e5,125e3,.05],[125e3,15e4,.0525],[15e4,25e4,.055],[25e4,1/0,.0575]],p:.0087},MA:{n:"Massachusetts",t:"flat",r:.05,p:.0104},MI:{n:"Michigan",t:"flat",r:.0425,p:.0132},MN:{n:"Minnesota",t:"prog",r:[[0,30070,.0535],[30070,98760,.068],[98760,183340,.0785],[183340,1/0,.0985]],p:.0096},MS:{n:"Mississippi",t:"flat",r:.047,p:.0065},MO:{n:"Missouri",t:"prog",r:[[0,1207,.02],[1207,2414,.025],[2414,3621,.03],[3621,4828,.035],[4828,6035,.04],[6035,7242,.045],[7242,8449,.05],[8449,1/0,.048]],p:.0082},MT:{n:"Montana",t:"prog",r:[[0,20500,.047],[20500,1/0,.059]],p:.0074},NE:{n:"Nebraska",t:"prog",r:[[0,3700,.0246],[3700,22170,.0351],[22170,35730,.0501],[35730,1/0,.0584]],p:.0142},NV:{n:"Nevada",t:"none",r:[],p:.0048},NH:{n:"New Hampshire",t:"none",r:[],p:.0159},NJ:{n:"New Jersey",t:"prog",r:[[0,2e4,.014],[2e4,35e3,.0175],[35e3,4e4,.035],[4e4,75e3,.05525],[75e3,5e5,.0637],[5e5,1e6,.0897],[1e6,1/0,.1075]],p:.0189},NM:{n:"New Mexico",t:"prog",r:[[0,5500,.017],[5500,11e3,.032],[11e3,16e3,.047],[16e3,21e4,.049],[21e4,1/0,.059]],p:.0062},NY:{n:"New York",t:"prog",r:[[0,8500,.04],[8500,11700,.045],[11700,13900,.0525],[13900,80650,.0585],[80650,215400,.0625],[215400,1077550,.0685],[1077550,5e6,.0965],[5e6,25e6,.103],[25e6,1/0,.109]],p:.0136},NC:{n:"North Carolina",t:"flat",r:.045,p:.0069},ND:{n:"North Dakota",t:"prog",r:[[0,44725,.0195],[44725,1/0,.025]],p:.0086},OH:{n:"Ohio",t:"prog",r:[[0,26050,0],[26050,1e5,.02765],[1e5,1/0,.0388]],p:.0132},OK:{n:"Oklahoma",t:"prog",r:[[0,1e3,.0025],[1e3,2500,.0075],[2500,3750,.0175],[3750,4900,.0275],[4900,7200,.0375],[7200,1/0,.0475]],p:.0074},OR:{n:"Oregon",t:"prog",r:[[0,4050,.0475],[4050,10200,.0675],[10200,125e3,.0875],[125e3,1/0,.099]],p:.0082},PA:{n:"Pennsylvania",t:"flat",r:.0307,p:.0128},RI:{n:"Rhode Island",t:"prog",r:[[0,73450,.0375],[73450,166950,.0475],[166950,1/0,.0599]],p:.0115},SC:{n:"South Carolina",t:"prog",r:[[0,3460,0],[3460,17330,.03],[17330,1/0,.064]],p:.005},SD:{n:"South Dakota",t:"none",r:[],p:.0107},TN:{n:"Tennessee",t:"none",r:[],p:.0056},TX:{n:"Texas",t:"none",r:[],p:.016},UT:{n:"Utah",t:"flat",r:.0465,p:.0052},VT:{n:"Vermont",t:"prog",r:[[0,45400,.0355],[45400,110450,.066],[110450,228900,.076],[228900,1/0,.0875]],p:.0157},VA:{n:"Virginia",t:"prog",r:[[0,3e3,.02],[3e3,5e3,.03],[5e3,17e3,.05],[17e3,1/0,.0575]],p:.0074},WA:{n:"Washington",t:"none",r:[],p:.0082},WV:{n:"West Virginia",t:"prog",r:[[0,1e4,.0236],[1e4,25e3,.0315],[25e3,4e4,.0354],[4e4,6e4,.0472],[6e4,1/0,.0512]],p:.0049},WI:{n:"Wisconsin",t:"prog",r:[[0,14320,.0354],[14320,28640,.0465],[28640,315310,.053],[315310,1/0,.0765]],p:.0143},WY:{n:"Wyoming",t:"none",r:[],p:.0051},DC:{n:"Washington DC",t:"prog",r:[[0,1e4,.04],[1e4,4e4,.06],[4e4,6e4,.065],[6e4,25e4,.085],[25e4,5e5,.0925],[5e5,1e6,.0975],[1e6,1/0,.1075]],p:.0056}};
 
@@ -26,6 +26,51 @@ function buildInv(mo,ar,yrs){const r=ar/12,a=[];for(let y=1;y<=yrs;y++){const m=
 const $=n=>"$"+Math.round(Math.abs(n)).toLocaleString();
 const $2=n=>"$"+Math.abs(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
 const pc=n=>(n*100).toFixed(1)+"%";
+
+
+// ─── FREE API HELPERS ───────────────────────────────────────────────────────
+// FRED API key — free at https://fred.stlouisfed.org/docs/api/api_key.html
+const FRED_KEY = "YOUR_FREE_FRED_API_KEY_HERE";
+
+async function fetchLiveMortgageRates() {
+  try {
+    const [r30, r15] = await Promise.all([
+      fetch(`https://api.stlouisfed.org/fred/series/observations?series_id=MORTGAGE30US&api_key=${FRED_KEY}&sort_order=desc&limit=1&file_type=json`).then(r=>r.json()),
+      fetch(`https://api.stlouisfed.org/fred/series/observations?series_id=MORTGAGE15US&api_key=${FRED_KEY}&sort_order=desc&limit=1&file_type=json`).then(r=>r.json()),
+    ]);
+    return {
+      rate30: parseFloat(r30.observations?.[0]?.value) || null,
+      rate15: parseFloat(r15.observations?.[0]?.value) || null,
+      date: r30.observations?.[0]?.date || null,
+    };
+  } catch(e) { return null; }
+}
+
+async function fetchCountyTaxByZip(zip) {
+  try {
+    // Step 1: zip → county FIPS via Census Geocoder (free, no key)
+    const geoRes = await fetch(
+      `https://geocoding.geo.census.gov/geocoder/geographies/zipcode/${zip}/current?benchmark=Public_AR_Current&vintage=Current_Current&format=json`
+    );
+    const geoData = await geoRes.json();
+    const counties = geoData?.result?.geographies?.Counties;
+    if (!counties?.length) return null;
+    const {STATE: sf, COUNTY: cf, NAME: countyName} = counties[0];
+
+    // Step 2: county FIPS → median property tax + median home value via Census ACS5 (free, no key)
+    const acsRes = await fetch(
+      `https://api.census.gov/data/2022/acs/acs5?get=B25103_001E,B25077_001E,NAME&for=county:${cf}&in=state:${sf}`
+    );
+    const acsData = await acsRes.json();
+    if (!acsData?.[1]) return null;
+    const medTax = parseFloat(acsData[1][0]);
+    const medVal = parseFloat(acsData[1][1]);
+    const fullName = acsData[1][2];
+    if (!medTax || !medVal || medVal <= 0) return null;
+    const rate = medTax / medVal;
+    return { rate, name: fullName, medTax, medVal };
+  } catch(e) { return null; }
+}
 
 // ─── TAB INFO DESCRIPTIONS ─────────────────────────────────────────────────
 const TAB_INFO = {
@@ -277,6 +322,162 @@ function I({label,value,onChange,prefix="$",suffix,step=100,help}){
       <input type="number" value={value} onChange={e=>onChange(+e.target.value||0)} step={step} min={0}
         style={{flex:1,padding:"6px 4px",textAlign:"right",fontSize:12,fontWeight:700,color:"#1e40af",border:"none",outline:"none",background:"transparent",width:"100%"}}/>
       {suffix&&<span style={{padding:"0 5px",fontSize:9,fontWeight:700,color:"#64748b",background:"#f8fafc"}}>{suffix}</span>}
+
+    {/* ════════════════════════════════════════════════════════
+        COMPARE TAB
+    ════════════════════════════════════════════════════════ */}
+    {tab==="compare"&&<div>
+      <div style={{padding:8,borderRadius:7,background:"linear-gradient(135deg,#0f172a,#1e3a5f)",color:"#fff",marginBottom:10}}>
+        <div style={{fontSize:13,fontWeight:900,marginBottom:3}}>🔀 Side-by-Side Scenario Comparison</div>
+        <div style={{fontSize:9,color:"#93c5fd"}}>Compare up to 3 home prices and down payments at your current income, rate, and expenses. Scenario 1 is your current settings.</div>
+      </div>
+
+      {/* Scenario inputs */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:10}}>
+        {[
+          {n:"Scenario 1",sub:"Current settings",price:pr,dpPct:dp,locked:true,color:"#1e40af",bg:"#eff6ff",bc:"#93c5fd"},
+          {n:"Scenario 2",sub:"",price:sc2pr,dpPct:sc2dp,locked:false,color:"#15803d",bg:"#f0fdf4",bc:"#86efac",setPr:setSc2pr,setDp:setSc2dp},
+          {n:"Scenario 3",sub:"",price:sc3pr,dpPct:sc3dp,locked:false,color:"#7c3aed",bg:"#faf5ff",bc:"#c4b5fd",setPr:setSc3pr,setDp:setSc3dp},
+        ].map((s,i)=>{
+          const dpAmt=s.price*s.dpPct/100;
+          const loan=s.price-dpAmt;
+          const rate=(lt==="fixed"?fr:ar)/100;
+          const mPI2=pmt(rate,ty,loan);
+          const mTx2=(s.price*pR)/12;
+          const mIns2=ins/12;
+          const hasPMI2=s.dpPct<20;
+          const mPMI2=hasPMI2?(loan*pm/100)/12:0;
+          const piti2=mPI2+mTx2+mIns2+mPMI2;
+          const surplus2=c.netM-piti2-c.totD-c.totE;
+          const fDTI2=c.grM>0?piti2/c.grM:0;
+          const closing2=loan*cp/100;
+          const ok=surplus2>=0&&fDTI2<=0.28;
+          return(
+            <div key={i} style={{borderRadius:10,border:`2px solid ${s.bc}`,background:s.bg,padding:8}}>
+              <div style={{fontSize:10,fontWeight:900,color:s.color,marginBottom:4}}>{s.n}</div>
+              {s.locked?(
+                <div style={{fontSize:9,color:"#64748b",marginBottom:6}}>Using your current Mortgage tab settings</div>
+              ):(
+                <div style={{marginBottom:6}}>
+                  <div style={{marginBottom:4}}>
+                    <div style={{fontSize:8,fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:2}}>Home Price</div>
+                    <div style={{display:"flex",alignItems:"center",border:"1px solid #e2e8f0",borderRadius:5,background:"#fff",overflow:"hidden"}}>
+                      <span style={{padding:"0 4px",fontSize:9,color:s.color}}>$</span>
+                      <input type="number" value={s.price} onChange={e=>s.setPr(+e.target.value||0)} step={5000}
+                        style={{flex:1,padding:"4px",fontSize:10,fontWeight:700,color:s.color,border:"none",outline:"none",background:"transparent"}}/>
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{fontSize:8,fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:2}}>Down Payment %</div>
+                    <div style={{display:"flex",alignItems:"center",border:"1px solid #e2e8f0",borderRadius:5,background:"#fff",overflow:"hidden"}}>
+                      <input type="number" value={s.dpPct} onChange={e=>s.setDp(+e.target.value||0)} step={1} min={0} max={100}
+                        style={{flex:1,padding:"4px",fontSize:10,fontWeight:700,color:s.color,border:"none",outline:"none",background:"transparent",textAlign:"right"}}/>
+                      <span style={{padding:"0 4px",fontSize:9,color:"#64748b"}}>%</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:3,fontSize:9}}>
+                {[
+                  {l:"Home Price",v:$(s.price),c:s.color},
+                  {l:"Down Pmt",v:$(dpAmt)+" ("+s.dpPct+"%)",c:s.color},
+                  {l:"Loan Amount",v:$(loan),c:s.color},
+                  {l:"Cash to Close",v:$(dpAmt+closing2),c:"#c2410c"},
+                ].map((x,j)=>(
+                  <div key={j} style={{borderRadius:5,padding:"3px 5px",background:"#fff",border:"1px solid #e2e8f0"}}>
+                    <div style={{fontSize:7,color:"#94a3b8"}}>{x.l}</div>
+                    <div style={{fontWeight:800,color:x.c,fontSize:10}}>{x.v}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{marginTop:6,padding:6,borderRadius:6,background:"#fff",border:`2px solid ${ok?"#16a34a":"#dc2626"}`}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}>
+                  <span style={{fontSize:9,fontWeight:700,color:"#64748b"}}>Monthly PITI</span>
+                  <span style={{fontSize:14,fontWeight:900,color:s.color}}>{$(piti2)}</span>
+                </div>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}>
+                  <span style={{fontSize:9,color:"#64748b"}}>Front DTI</span>
+                  <span style={{fontSize:9,fontWeight:700,color:fDTI2<=0.28?"#16a34a":"#dc2626"}}>{pc(fDTI2)} {fDTI2<=0.28?"✓":"⚠"}</span>
+                </div>
+                <div style={{display:"flex",justifyContent:"space-between"}}>
+                  <span style={{fontSize:9,color:"#64748b"}}>Monthly Surplus</span>
+                  <span style={{fontSize:11,fontWeight:900,color:surplus2>=0?"#16a34a":"#dc2626"}}>{surplus2>=0?"+":""}{$(surplus2)}</span>
+                </div>
+              </div>
+              <div style={{marginTop:4,padding:4,borderRadius:5,textAlign:"center",background:ok?"#f0fdf4":"#fef2f2",border:`1px solid ${ok?"#bbf7d0":"#fecaca"}`}}>
+                <span style={{fontSize:9,fontWeight:800,color:ok?"#16a34a":"#dc2626"}}>{ok?"✓ Affordable":"⚠ Risky"}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Summary comparison table */}
+      <Sec title="Comparison Summary" color="#0f172a">
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:10}}>
+          <thead><tr>
+            {["Metric","Scenario 1","Scenario 2","Scenario 3"].map((h,i)=>(
+              <th key={i} style={{padding:"5px 7px",background:["#1e293b","#1e40af","#15803d","#7c3aed"][i],color:"#fff",fontWeight:800,textAlign:i===0?"left":"right"}}>{h}</th>
+            ))}
+          </tr></thead>
+          <tbody>
+            {(()=>{
+              const scenarios=[
+                {price:pr,dpPct:dp},
+                {price:sc2pr,dpPct:sc2dp},
+                {price:sc3pr,dpPct:sc3dp},
+              ].map(s=>{
+                const dpAmt=s.price*s.dpPct/100;
+                const loan=s.price-dpAmt;
+                const rate=(lt==="fixed"?fr:ar)/100;
+                const mPI2=pmt(rate,ty,loan);
+                const piti2=mPI2+(s.price*pR)/12+ins/12+(s.dpPct<20?(loan*pm/100)/12:0);
+                const surplus2=c.netM-piti2-c.totD-c.totE;
+                const fDTI2=c.grM>0?piti2/c.grM:0;
+                const bDTI2=c.grM>0?(piti2+c.totD)/c.grM:0;
+                return{price:s.price,dpAmt,loan,piti:piti2,surplus:surplus2,fDTI:fDTI2,bDTI:bDTI2,close:dpAmt+loan*cp/100};
+              });
+              const rows=[
+                {l:"Home Price",   vals:scenarios.map(s=>$(s.price)),  isGood:null},
+                {l:"Down Payment", vals:scenarios.map(s=>$(s.dpAmt)), isGood:null},
+                {l:"Loan Amount",  vals:scenarios.map(s=>$(s.loan)),  isGood:null},
+                {l:"Monthly PITI", vals:scenarios.map(s=>$(s.piti)),  best:Math.min(...scenarios.map(s=>s.piti))},
+                {l:"Cash to Close",vals:scenarios.map(s=>$(s.close)), best:Math.min(...scenarios.map(s=>s.close))},
+                {l:"Front-End DTI",vals:scenarios.map(s=>pc(s.fDTI)), best:Math.min(...scenarios.map(s=>s.fDTI)),isRate:true,threshold:0.28},
+                {l:"Back-End DTI", vals:scenarios.map(s=>pc(s.bDTI)), best:Math.min(...scenarios.map(s=>s.bDTI)),isRate:true,threshold:0.45},
+                {l:"Monthly Surplus",vals:scenarios.map(s=>$(s.surplus)), best:Math.max(...scenarios.map(s=>s.surplus)),higher:true},
+              ];
+              return rows.map((r,ri)=>(
+                <tr key={ri} style={{background:ri%2===0?"#fff":"#f8fafc"}}>
+                  <td style={{padding:"4px 7px",fontWeight:600,color:"#475569"}}>{r.l}</td>
+                  {scenarios.map((s,si)=>{
+                    const rawVal=si===0?s.piti:si===1?scenarios[1].piti:scenarios[2].piti;
+                    let isBest=false;
+                    if(r.best!==undefined){
+                      if(r.higher) isBest=[s.surplus,scenarios[1]?.surplus,scenarios[2]?.surplus][si]===r.best;
+                      else isBest=[s.piti,scenarios[1]?.piti,scenarios[2]?.piti][si]===r.best||
+                                  [s.fDTI,scenarios[1]?.fDTI,scenarios[2]?.fDTI][si]===r.best||
+                                  [s.bDTI,scenarios[1]?.bDTI,scenarios[2]?.bDTI][si]===r.best||
+                                  [s.close,scenarios[1]?.close,scenarios[2]?.close][si]===r.best;
+                    }
+                    return(
+                      <td key={si} style={{padding:"4px 7px",textAlign:"right",fontWeight:isBest?900:600,
+                        color:isBest?["#1e40af","#15803d","#7c3aed"][si]:"#1e293b",
+                        background:isBest?["#eff6ff","#f0fdf4","#faf5ff"][si]:"transparent"}}>
+                        {r.vals[si]}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ));
+            })()}
+          </tbody>
+        </table>
+        <div style={{fontSize:8,color:"#94a3b8",marginTop:6}}>Highlighted values indicate the most favorable option for each metric. All scenarios use your current income, rate, term, and expense inputs.</div>
+      </Sec>
+    </div>}
+
+
     </div>
   </div>);
 }
@@ -288,6 +489,162 @@ function DR({label,value,onChange}){
       <span style={{padding:"0 2px",fontSize:9,color:"#1e40af"}}>$</span>
       <input type="number" value={value} onChange={e=>onChange(+e.target.value||0)} step={10}
         style={{width:"100%",padding:"4px 2px",textAlign:"right",fontSize:10,fontWeight:700,color:"#1e40af",border:"none",outline:"none",background:"transparent"}}/>
+
+    {/* ════════════════════════════════════════════════════════
+        COMPARE TAB
+    ════════════════════════════════════════════════════════ */}
+    {tab==="compare"&&<div>
+      <div style={{padding:8,borderRadius:7,background:"linear-gradient(135deg,#0f172a,#1e3a5f)",color:"#fff",marginBottom:10}}>
+        <div style={{fontSize:13,fontWeight:900,marginBottom:3}}>🔀 Side-by-Side Scenario Comparison</div>
+        <div style={{fontSize:9,color:"#93c5fd"}}>Compare up to 3 home prices and down payments at your current income, rate, and expenses. Scenario 1 is your current settings.</div>
+      </div>
+
+      {/* Scenario inputs */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:10}}>
+        {[
+          {n:"Scenario 1",sub:"Current settings",price:pr,dpPct:dp,locked:true,color:"#1e40af",bg:"#eff6ff",bc:"#93c5fd"},
+          {n:"Scenario 2",sub:"",price:sc2pr,dpPct:sc2dp,locked:false,color:"#15803d",bg:"#f0fdf4",bc:"#86efac",setPr:setSc2pr,setDp:setSc2dp},
+          {n:"Scenario 3",sub:"",price:sc3pr,dpPct:sc3dp,locked:false,color:"#7c3aed",bg:"#faf5ff",bc:"#c4b5fd",setPr:setSc3pr,setDp:setSc3dp},
+        ].map((s,i)=>{
+          const dpAmt=s.price*s.dpPct/100;
+          const loan=s.price-dpAmt;
+          const rate=(lt==="fixed"?fr:ar)/100;
+          const mPI2=pmt(rate,ty,loan);
+          const mTx2=(s.price*pR)/12;
+          const mIns2=ins/12;
+          const hasPMI2=s.dpPct<20;
+          const mPMI2=hasPMI2?(loan*pm/100)/12:0;
+          const piti2=mPI2+mTx2+mIns2+mPMI2;
+          const surplus2=c.netM-piti2-c.totD-c.totE;
+          const fDTI2=c.grM>0?piti2/c.grM:0;
+          const closing2=loan*cp/100;
+          const ok=surplus2>=0&&fDTI2<=0.28;
+          return(
+            <div key={i} style={{borderRadius:10,border:`2px solid ${s.bc}`,background:s.bg,padding:8}}>
+              <div style={{fontSize:10,fontWeight:900,color:s.color,marginBottom:4}}>{s.n}</div>
+              {s.locked?(
+                <div style={{fontSize:9,color:"#64748b",marginBottom:6}}>Using your current Mortgage tab settings</div>
+              ):(
+                <div style={{marginBottom:6}}>
+                  <div style={{marginBottom:4}}>
+                    <div style={{fontSize:8,fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:2}}>Home Price</div>
+                    <div style={{display:"flex",alignItems:"center",border:"1px solid #e2e8f0",borderRadius:5,background:"#fff",overflow:"hidden"}}>
+                      <span style={{padding:"0 4px",fontSize:9,color:s.color}}>$</span>
+                      <input type="number" value={s.price} onChange={e=>s.setPr(+e.target.value||0)} step={5000}
+                        style={{flex:1,padding:"4px",fontSize:10,fontWeight:700,color:s.color,border:"none",outline:"none",background:"transparent"}}/>
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{fontSize:8,fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:2}}>Down Payment %</div>
+                    <div style={{display:"flex",alignItems:"center",border:"1px solid #e2e8f0",borderRadius:5,background:"#fff",overflow:"hidden"}}>
+                      <input type="number" value={s.dpPct} onChange={e=>s.setDp(+e.target.value||0)} step={1} min={0} max={100}
+                        style={{flex:1,padding:"4px",fontSize:10,fontWeight:700,color:s.color,border:"none",outline:"none",background:"transparent",textAlign:"right"}}/>
+                      <span style={{padding:"0 4px",fontSize:9,color:"#64748b"}}>%</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:3,fontSize:9}}>
+                {[
+                  {l:"Home Price",v:$(s.price),c:s.color},
+                  {l:"Down Pmt",v:$(dpAmt)+" ("+s.dpPct+"%)",c:s.color},
+                  {l:"Loan Amount",v:$(loan),c:s.color},
+                  {l:"Cash to Close",v:$(dpAmt+closing2),c:"#c2410c"},
+                ].map((x,j)=>(
+                  <div key={j} style={{borderRadius:5,padding:"3px 5px",background:"#fff",border:"1px solid #e2e8f0"}}>
+                    <div style={{fontSize:7,color:"#94a3b8"}}>{x.l}</div>
+                    <div style={{fontWeight:800,color:x.c,fontSize:10}}>{x.v}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{marginTop:6,padding:6,borderRadius:6,background:"#fff",border:`2px solid ${ok?"#16a34a":"#dc2626"}`}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}>
+                  <span style={{fontSize:9,fontWeight:700,color:"#64748b"}}>Monthly PITI</span>
+                  <span style={{fontSize:14,fontWeight:900,color:s.color}}>{$(piti2)}</span>
+                </div>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}>
+                  <span style={{fontSize:9,color:"#64748b"}}>Front DTI</span>
+                  <span style={{fontSize:9,fontWeight:700,color:fDTI2<=0.28?"#16a34a":"#dc2626"}}>{pc(fDTI2)} {fDTI2<=0.28?"✓":"⚠"}</span>
+                </div>
+                <div style={{display:"flex",justifyContent:"space-between"}}>
+                  <span style={{fontSize:9,color:"#64748b"}}>Monthly Surplus</span>
+                  <span style={{fontSize:11,fontWeight:900,color:surplus2>=0?"#16a34a":"#dc2626"}}>{surplus2>=0?"+":""}{$(surplus2)}</span>
+                </div>
+              </div>
+              <div style={{marginTop:4,padding:4,borderRadius:5,textAlign:"center",background:ok?"#f0fdf4":"#fef2f2",border:`1px solid ${ok?"#bbf7d0":"#fecaca"}`}}>
+                <span style={{fontSize:9,fontWeight:800,color:ok?"#16a34a":"#dc2626"}}>{ok?"✓ Affordable":"⚠ Risky"}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Summary comparison table */}
+      <Sec title="Comparison Summary" color="#0f172a">
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:10}}>
+          <thead><tr>
+            {["Metric","Scenario 1","Scenario 2","Scenario 3"].map((h,i)=>(
+              <th key={i} style={{padding:"5px 7px",background:["#1e293b","#1e40af","#15803d","#7c3aed"][i],color:"#fff",fontWeight:800,textAlign:i===0?"left":"right"}}>{h}</th>
+            ))}
+          </tr></thead>
+          <tbody>
+            {(()=>{
+              const scenarios=[
+                {price:pr,dpPct:dp},
+                {price:sc2pr,dpPct:sc2dp},
+                {price:sc3pr,dpPct:sc3dp},
+              ].map(s=>{
+                const dpAmt=s.price*s.dpPct/100;
+                const loan=s.price-dpAmt;
+                const rate=(lt==="fixed"?fr:ar)/100;
+                const mPI2=pmt(rate,ty,loan);
+                const piti2=mPI2+(s.price*pR)/12+ins/12+(s.dpPct<20?(loan*pm/100)/12:0);
+                const surplus2=c.netM-piti2-c.totD-c.totE;
+                const fDTI2=c.grM>0?piti2/c.grM:0;
+                const bDTI2=c.grM>0?(piti2+c.totD)/c.grM:0;
+                return{price:s.price,dpAmt,loan,piti:piti2,surplus:surplus2,fDTI:fDTI2,bDTI:bDTI2,close:dpAmt+loan*cp/100};
+              });
+              const rows=[
+                {l:"Home Price",   vals:scenarios.map(s=>$(s.price)),  isGood:null},
+                {l:"Down Payment", vals:scenarios.map(s=>$(s.dpAmt)), isGood:null},
+                {l:"Loan Amount",  vals:scenarios.map(s=>$(s.loan)),  isGood:null},
+                {l:"Monthly PITI", vals:scenarios.map(s=>$(s.piti)),  best:Math.min(...scenarios.map(s=>s.piti))},
+                {l:"Cash to Close",vals:scenarios.map(s=>$(s.close)), best:Math.min(...scenarios.map(s=>s.close))},
+                {l:"Front-End DTI",vals:scenarios.map(s=>pc(s.fDTI)), best:Math.min(...scenarios.map(s=>s.fDTI)),isRate:true,threshold:0.28},
+                {l:"Back-End DTI", vals:scenarios.map(s=>pc(s.bDTI)), best:Math.min(...scenarios.map(s=>s.bDTI)),isRate:true,threshold:0.45},
+                {l:"Monthly Surplus",vals:scenarios.map(s=>$(s.surplus)), best:Math.max(...scenarios.map(s=>s.surplus)),higher:true},
+              ];
+              return rows.map((r,ri)=>(
+                <tr key={ri} style={{background:ri%2===0?"#fff":"#f8fafc"}}>
+                  <td style={{padding:"4px 7px",fontWeight:600,color:"#475569"}}>{r.l}</td>
+                  {scenarios.map((s,si)=>{
+                    const rawVal=si===0?s.piti:si===1?scenarios[1].piti:scenarios[2].piti;
+                    let isBest=false;
+                    if(r.best!==undefined){
+                      if(r.higher) isBest=[s.surplus,scenarios[1]?.surplus,scenarios[2]?.surplus][si]===r.best;
+                      else isBest=[s.piti,scenarios[1]?.piti,scenarios[2]?.piti][si]===r.best||
+                                  [s.fDTI,scenarios[1]?.fDTI,scenarios[2]?.fDTI][si]===r.best||
+                                  [s.bDTI,scenarios[1]?.bDTI,scenarios[2]?.bDTI][si]===r.best||
+                                  [s.close,scenarios[1]?.close,scenarios[2]?.close][si]===r.best;
+                    }
+                    return(
+                      <td key={si} style={{padding:"4px 7px",textAlign:"right",fontWeight:isBest?900:600,
+                        color:isBest?["#1e40af","#15803d","#7c3aed"][si]:"#1e293b",
+                        background:isBest?["#eff6ff","#f0fdf4","#faf5ff"][si]:"transparent"}}>
+                        {r.vals[si]}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ));
+            })()}
+          </tbody>
+        </table>
+        <div style={{fontSize:8,color:"#94a3b8",marginTop:6}}>Highlighted values indicate the most favorable option for each metric. All scenarios use your current income, rate, term, and expense inputs.</div>
+      </Sec>
+    </div>}
+
+
     </div>
   </div>);
 }
@@ -358,10 +715,46 @@ export default function App(){
   const[tab,setTab]=useState("income");const[av,setAv]=useState("yearly");
   const[tipTab,setTipTab]=useState(null);
 
+  // ── Live rate & county tax state ──────────────────────────────────────────
+  const[zipCode,setZipCode]=useState("");
+  const[zipInput,setZipInput]=useState("");
+  const[countyInfo,setCountyInfo]=useState(null); // {rate, name, medTax, medVal}
+  const[zipLoading,setZipLoading]=useState(false);
+  const[zipError,setZipError]=useState(null);
+  const[liveRates,setLiveRates]=useState(null); // {rate30, rate15, date}
+  const[rateLoading,setRateLoading]=useState(false);
+  const[useLiveRate,setUseLiveRate]=useState(false);
+  // ── Scenario compare state ────────────────────────────────────────────────
+  const[sc2pr,setSc2pr]=useState(400000);const[sc2dp,setSc2dp]=useState(10);
+  const[sc3pr,setSc3pr]=useState(450000);const[sc3dp,setSc3dp]=useState(20);
+
+  // Fetch live rates on mount (only if FRED key is set)
+  useEffect(()=>{
+    if(FRED_KEY==="YOUR_FREE_FRED_API_KEY_HERE") return;
+    setRateLoading(true);
+    fetchLiveMortgageRates().then(r=>{
+      setLiveRates(r);
+      setRateLoading(false);
+    });
+  },[]);
+
+  const handleZipLookup = async()=>{
+    if(zipInput.length!==5||!/^\d{5}$/.test(zipInput)){setZipError("Enter a valid 5-digit zip");return;}
+    setZipLoading(true);setZipError(null);
+    const result = await fetchCountyTaxByZip(zipInput);
+    setZipLoading(false);
+    if(result){setCountyInfo(result);setZipCode(zipInput);}
+    else{setZipError("County not found — try a nearby zip");}
+  };
+
+  // Use county rate if looked up, else state average
+  const effectiveRate = countyInfo ? countyInfo.rate : null;
+
+
   const uD=useCallback((i,v)=>sDV(d=>{const c=[...d];c[i]=v;return c;}),[]);
   const uE=useCallback((i,v)=>sEV(d=>{const c=[...d];c[i]=v;return c;}),[]);
   const TMS=[30,25,20,15,10];const sd=STATES[st]||STATES.MI;
-  const pR=mo>0?mo/1000:sd.p;
+  const pR=mo>0?mo/1000:(effectiveRate||sd.p);
   const flL=fil==="mfj"?"Married Filing Jointly":fil==="single"?"Single":"Head of Household";
   const ltL=lt==="fixed"?`${ty}-Year Fixed`:"7/1 ARM";
 
@@ -439,6 +832,7 @@ export default function App(){
     {id:"budget",l:"Budget",  i:"📊", tip:"budget"},
     {id:"rule",  l:"50/30/20",i:"⚖️", tip:"rule"},
     {id:"summary",l:"Summary",i:"✅", tip:"summary"},
+    {id:"compare", l:"Compare", i:"🔀", tip:"summary"},
   ];
 
   return(
@@ -663,6 +1057,55 @@ export default function App(){
         MORTGAGE TAB
     ════════════════════════════════════════════════════════ */}
     {tab==="mortgage"&&<div>
+
+      {/* Live Rates Banner */}
+      {(rateLoading||liveRates)&&<div style={{padding:8,borderRadius:7,background:"linear-gradient(135deg,#0f172a,#1e3a5f)",marginBottom:8,color:"#fff"}}>
+        <div style={{fontSize:9,fontWeight:700,color:"#93c5fd",marginBottom:4}}>📡 LIVE MORTGAGE RATES — Freddie Mac / FRED</div>
+        {rateLoading?<div style={{fontSize:9,color:"#94a3b8"}}>Loading current rates...</div>:liveRates&&<>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,textAlign:"center"}}>
+            <div><div style={{fontSize:8,color:"#94a3b8"}}>30-Year Fixed</div><div style={{fontSize:16,fontWeight:900,color:"#22c55e"}}>{liveRates.rate30?.toFixed(2)}%</div></div>
+            <div><div style={{fontSize:8,color:"#94a3b8"}}>15-Year Fixed</div><div style={{fontSize:16,fontWeight:900,color:"#22c55e"}}>{liveRates.rate15?.toFixed(2)}%</div></div>
+            <div><div style={{fontSize:8,color:"#94a3b8"}}>Week of</div><div style={{fontSize:10,fontWeight:700,color:"#93c5fd"}}>{liveRates.date}</div></div>
+          </div>
+          <button onClick={()=>{if(lt==="fixed"&&liveRates.rate30)setFr(liveRates.rate30);if(lt==="arm"&&liveRates.rate15)setAr(liveRates.rate15);}}
+            style={{marginTop:6,width:"100%",padding:"5px",borderRadius:5,background:"#22c55e",color:"#fff",fontSize:9,fontWeight:800,border:"none",cursor:"pointer"}}>
+            ⬇ Use Live Rate for {lt==="fixed"?"30-Yr Fixed":"7/1 ARM"}
+          </button>
+        </>}
+      </div>}
+
+      {/* Zip Code → County Property Tax Lookup */}
+      <div style={{padding:8,borderRadius:7,background:"#fff7ed",border:"2px solid #fed7aa",marginBottom:8}}>
+        <div style={{fontSize:9,fontWeight:800,color:"#c2410c",marginBottom:4}}>📍 County-Level Property Tax Lookup</div>
+        <div style={{fontSize:8,color:"#92400e",marginBottom:6}}>Enter your zip code to pull the actual county median property tax rate from U.S. Census data — more accurate than state average.</div>
+        <div style={{display:"flex",gap:5,alignItems:"flex-start"}}>
+          <div style={{flex:1,border:"2px solid #fed7aa",borderRadius:6,background:"#fefdf8",overflow:"hidden",display:"flex",alignItems:"center"}}>
+            <span style={{padding:"0 5px",fontSize:10,fontWeight:700,color:"#c2410c",background:"#fff7ed"}}>ZIP</span>
+            <input type="text" value={zipInput} onChange={e=>setZipInput(e.target.value.replace(/\D/g,"").slice(0,5))}
+              onKeyDown={e=>e.key==="Enter"&&handleZipLookup()}
+              placeholder="48045" maxLength={5}
+              style={{flex:1,padding:"6px 4px",fontSize:12,fontWeight:700,color:"#c2410c",border:"none",outline:"none",background:"transparent"}}/>
+          </div>
+          <button onClick={handleZipLookup} disabled={zipLoading}
+            style={{padding:"6px 12px",borderRadius:6,background:zipLoading?"#e2e8f0":"#c2410c",color:"#fff",fontSize:9,fontWeight:800,border:"none",cursor:zipLoading?"default":"pointer"}}>
+            {zipLoading?"...":"Look Up"}
+          </button>
+        </div>
+        {zipError&&<div style={{fontSize:8,color:"#dc2626",marginTop:4}}>⚠ {zipError}</div>}
+        {countyInfo&&<div style={{marginTop:6,padding:6,borderRadius:5,background:"#f0fdf4",border:"1px solid #bbf7d0"}}>
+          <div style={{fontSize:9,fontWeight:700,color:"#15803d"}}>✓ {countyInfo.name}</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4,marginTop:3,textAlign:"center"}}>
+            <div><div style={{fontSize:7,color:"#64748b"}}>County Rate</div><div style={{fontWeight:900,fontSize:11,color:"#15803d"}}>{(countyInfo.rate*100).toFixed(3)}%</div></div>
+            <div><div style={{fontSize:7,color:"#64748b"}}>Median Tax/yr</div><div style={{fontWeight:900,fontSize:11,color:"#c2410c"}}>${countyInfo.medTax?.toLocaleString()}</div></div>
+            <div><div style={{fontSize:7,color:"#64748b"}}>Median Home</div><div style={{fontWeight:900,fontSize:11,color:"#1e40af"}}>${countyInfo.medVal?.toLocaleString()}</div></div>
+          </div>
+          <div style={{fontSize:8,color:"#64748b",marginTop:3}}>Now using county rate instead of state average for all calculations</div>
+        </div>}
+        {!countyInfo&&FRED_KEY==="YOUR_FREE_FRED_API_KEY_HERE"&&<div style={{marginTop:5,padding:5,borderRadius:5,background:"#fef2f2",border:"1px solid #fecaca",fontSize:8,color:"#dc2626"}}>
+          💡 To enable live mortgage rates: get a free FRED API key at <b>fred.stlouisfed.org</b> and replace YOUR_FREE_FRED_API_KEY_HERE in the code.
+        </div>}
+      </div>
+
       <Sec title="Purchase & Loan" color="#1e40af">
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
           <I label="Home Price" value={pr} onChange={setPr} step={5000}/>
@@ -1005,6 +1448,162 @@ export default function App(){
         <b>Disclaimer:</b> Estimates only. Consult mortgage professional & tax advisor. State rates approximate. Property tax uses state average — varies by county. Investment returns not guaranteed.
       </div>
     </div>}
+
+
+    {/* ════════════════════════════════════════════════════════
+        COMPARE TAB
+    ════════════════════════════════════════════════════════ */}
+    {tab==="compare"&&<div>
+      <div style={{padding:8,borderRadius:7,background:"linear-gradient(135deg,#0f172a,#1e3a5f)",color:"#fff",marginBottom:10}}>
+        <div style={{fontSize:13,fontWeight:900,marginBottom:3}}>🔀 Side-by-Side Scenario Comparison</div>
+        <div style={{fontSize:9,color:"#93c5fd"}}>Compare up to 3 home prices and down payments at your current income, rate, and expenses. Scenario 1 is your current settings.</div>
+      </div>
+
+      {/* Scenario inputs */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:10}}>
+        {[
+          {n:"Scenario 1",sub:"Current settings",price:pr,dpPct:dp,locked:true,color:"#1e40af",bg:"#eff6ff",bc:"#93c5fd"},
+          {n:"Scenario 2",sub:"",price:sc2pr,dpPct:sc2dp,locked:false,color:"#15803d",bg:"#f0fdf4",bc:"#86efac",setPr:setSc2pr,setDp:setSc2dp},
+          {n:"Scenario 3",sub:"",price:sc3pr,dpPct:sc3dp,locked:false,color:"#7c3aed",bg:"#faf5ff",bc:"#c4b5fd",setPr:setSc3pr,setDp:setSc3dp},
+        ].map((s,i)=>{
+          const dpAmt=s.price*s.dpPct/100;
+          const loan=s.price-dpAmt;
+          const rate=(lt==="fixed"?fr:ar)/100;
+          const mPI2=pmt(rate,ty,loan);
+          const mTx2=(s.price*pR)/12;
+          const mIns2=ins/12;
+          const hasPMI2=s.dpPct<20;
+          const mPMI2=hasPMI2?(loan*pm/100)/12:0;
+          const piti2=mPI2+mTx2+mIns2+mPMI2;
+          const surplus2=c.netM-piti2-c.totD-c.totE;
+          const fDTI2=c.grM>0?piti2/c.grM:0;
+          const closing2=loan*cp/100;
+          const ok=surplus2>=0&&fDTI2<=0.28;
+          return(
+            <div key={i} style={{borderRadius:10,border:`2px solid ${s.bc}`,background:s.bg,padding:8}}>
+              <div style={{fontSize:10,fontWeight:900,color:s.color,marginBottom:4}}>{s.n}</div>
+              {s.locked?(
+                <div style={{fontSize:9,color:"#64748b",marginBottom:6}}>Using your current Mortgage tab settings</div>
+              ):(
+                <div style={{marginBottom:6}}>
+                  <div style={{marginBottom:4}}>
+                    <div style={{fontSize:8,fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:2}}>Home Price</div>
+                    <div style={{display:"flex",alignItems:"center",border:"1px solid #e2e8f0",borderRadius:5,background:"#fff",overflow:"hidden"}}>
+                      <span style={{padding:"0 4px",fontSize:9,color:s.color}}>$</span>
+                      <input type="number" value={s.price} onChange={e=>s.setPr(+e.target.value||0)} step={5000}
+                        style={{flex:1,padding:"4px",fontSize:10,fontWeight:700,color:s.color,border:"none",outline:"none",background:"transparent"}}/>
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{fontSize:8,fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:2}}>Down Payment %</div>
+                    <div style={{display:"flex",alignItems:"center",border:"1px solid #e2e8f0",borderRadius:5,background:"#fff",overflow:"hidden"}}>
+                      <input type="number" value={s.dpPct} onChange={e=>s.setDp(+e.target.value||0)} step={1} min={0} max={100}
+                        style={{flex:1,padding:"4px",fontSize:10,fontWeight:700,color:s.color,border:"none",outline:"none",background:"transparent",textAlign:"right"}}/>
+                      <span style={{padding:"0 4px",fontSize:9,color:"#64748b"}}>%</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:3,fontSize:9}}>
+                {[
+                  {l:"Home Price",v:$(s.price),c:s.color},
+                  {l:"Down Pmt",v:$(dpAmt)+" ("+s.dpPct+"%)",c:s.color},
+                  {l:"Loan Amount",v:$(loan),c:s.color},
+                  {l:"Cash to Close",v:$(dpAmt+closing2),c:"#c2410c"},
+                ].map((x,j)=>(
+                  <div key={j} style={{borderRadius:5,padding:"3px 5px",background:"#fff",border:"1px solid #e2e8f0"}}>
+                    <div style={{fontSize:7,color:"#94a3b8"}}>{x.l}</div>
+                    <div style={{fontWeight:800,color:x.c,fontSize:10}}>{x.v}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{marginTop:6,padding:6,borderRadius:6,background:"#fff",border:`2px solid ${ok?"#16a34a":"#dc2626"}`}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}>
+                  <span style={{fontSize:9,fontWeight:700,color:"#64748b"}}>Monthly PITI</span>
+                  <span style={{fontSize:14,fontWeight:900,color:s.color}}>{$(piti2)}</span>
+                </div>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}>
+                  <span style={{fontSize:9,color:"#64748b"}}>Front DTI</span>
+                  <span style={{fontSize:9,fontWeight:700,color:fDTI2<=0.28?"#16a34a":"#dc2626"}}>{pc(fDTI2)} {fDTI2<=0.28?"✓":"⚠"}</span>
+                </div>
+                <div style={{display:"flex",justifyContent:"space-between"}}>
+                  <span style={{fontSize:9,color:"#64748b"}}>Monthly Surplus</span>
+                  <span style={{fontSize:11,fontWeight:900,color:surplus2>=0?"#16a34a":"#dc2626"}}>{surplus2>=0?"+":""}{$(surplus2)}</span>
+                </div>
+              </div>
+              <div style={{marginTop:4,padding:4,borderRadius:5,textAlign:"center",background:ok?"#f0fdf4":"#fef2f2",border:`1px solid ${ok?"#bbf7d0":"#fecaca"}`}}>
+                <span style={{fontSize:9,fontWeight:800,color:ok?"#16a34a":"#dc2626"}}>{ok?"✓ Affordable":"⚠ Risky"}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Summary comparison table */}
+      <Sec title="Comparison Summary" color="#0f172a">
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:10}}>
+          <thead><tr>
+            {["Metric","Scenario 1","Scenario 2","Scenario 3"].map((h,i)=>(
+              <th key={i} style={{padding:"5px 7px",background:["#1e293b","#1e40af","#15803d","#7c3aed"][i],color:"#fff",fontWeight:800,textAlign:i===0?"left":"right"}}>{h}</th>
+            ))}
+          </tr></thead>
+          <tbody>
+            {(()=>{
+              const scenarios=[
+                {price:pr,dpPct:dp},
+                {price:sc2pr,dpPct:sc2dp},
+                {price:sc3pr,dpPct:sc3dp},
+              ].map(s=>{
+                const dpAmt=s.price*s.dpPct/100;
+                const loan=s.price-dpAmt;
+                const rate=(lt==="fixed"?fr:ar)/100;
+                const mPI2=pmt(rate,ty,loan);
+                const piti2=mPI2+(s.price*pR)/12+ins/12+(s.dpPct<20?(loan*pm/100)/12:0);
+                const surplus2=c.netM-piti2-c.totD-c.totE;
+                const fDTI2=c.grM>0?piti2/c.grM:0;
+                const bDTI2=c.grM>0?(piti2+c.totD)/c.grM:0;
+                return{price:s.price,dpAmt,loan,piti:piti2,surplus:surplus2,fDTI:fDTI2,bDTI:bDTI2,close:dpAmt+loan*cp/100};
+              });
+              const rows=[
+                {l:"Home Price",   vals:scenarios.map(s=>$(s.price)),  isGood:null},
+                {l:"Down Payment", vals:scenarios.map(s=>$(s.dpAmt)), isGood:null},
+                {l:"Loan Amount",  vals:scenarios.map(s=>$(s.loan)),  isGood:null},
+                {l:"Monthly PITI", vals:scenarios.map(s=>$(s.piti)),  best:Math.min(...scenarios.map(s=>s.piti))},
+                {l:"Cash to Close",vals:scenarios.map(s=>$(s.close)), best:Math.min(...scenarios.map(s=>s.close))},
+                {l:"Front-End DTI",vals:scenarios.map(s=>pc(s.fDTI)), best:Math.min(...scenarios.map(s=>s.fDTI)),isRate:true,threshold:0.28},
+                {l:"Back-End DTI", vals:scenarios.map(s=>pc(s.bDTI)), best:Math.min(...scenarios.map(s=>s.bDTI)),isRate:true,threshold:0.45},
+                {l:"Monthly Surplus",vals:scenarios.map(s=>$(s.surplus)), best:Math.max(...scenarios.map(s=>s.surplus)),higher:true},
+              ];
+              return rows.map((r,ri)=>(
+                <tr key={ri} style={{background:ri%2===0?"#fff":"#f8fafc"}}>
+                  <td style={{padding:"4px 7px",fontWeight:600,color:"#475569"}}>{r.l}</td>
+                  {scenarios.map((s,si)=>{
+                    const rawVal=si===0?s.piti:si===1?scenarios[1].piti:scenarios[2].piti;
+                    let isBest=false;
+                    if(r.best!==undefined){
+                      if(r.higher) isBest=[s.surplus,scenarios[1]?.surplus,scenarios[2]?.surplus][si]===r.best;
+                      else isBest=[s.piti,scenarios[1]?.piti,scenarios[2]?.piti][si]===r.best||
+                                  [s.fDTI,scenarios[1]?.fDTI,scenarios[2]?.fDTI][si]===r.best||
+                                  [s.bDTI,scenarios[1]?.bDTI,scenarios[2]?.bDTI][si]===r.best||
+                                  [s.close,scenarios[1]?.close,scenarios[2]?.close][si]===r.best;
+                    }
+                    return(
+                      <td key={si} style={{padding:"4px 7px",textAlign:"right",fontWeight:isBest?900:600,
+                        color:isBest?["#1e40af","#15803d","#7c3aed"][si]:"#1e293b",
+                        background:isBest?["#eff6ff","#f0fdf4","#faf5ff"][si]:"transparent"}}>
+                        {r.vals[si]}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ));
+            })()}
+          </tbody>
+        </table>
+        <div style={{fontSize:8,color:"#94a3b8",marginTop:6}}>Highlighted values indicate the most favorable option for each metric. All scenarios use your current income, rate, term, and expense inputs.</div>
+      </Sec>
+    </div>}
+
 
     </div>
   </div>);
