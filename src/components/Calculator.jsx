@@ -341,23 +341,23 @@ ${c.invEnd.v>c.intSv?'📈 Investing wins by '+$(c.invEnd.v-c.intSv):'🏠 Payin
 
 <div class="nt"><b>Disclaimer:</b> Educational/planning purposes only — not financial, legal, or tax advice. Consult a licensed mortgage professional, tax advisor, and financial planner. Tax calculations use 2025 federal brackets and approximate state rates. Property tax uses ${sn} average effective rate (${(STATES[inp.st]?.p*100||0).toFixed(2)}%) — actual rates vary by county. Investment returns not guaranteed.</div>
 </body></html>`;
-  // Render PDF using html2pdf.js — pass HTML string directly to avoid offscreen DOM issues
+  // Render PDF — element is off-screen in real DOM, onclone repositions it for html2canvas
   import('html2pdf.js').then(mod=>{
     const html2pdf=mod.default||mod;
     const container=document.createElement('div');
+    container.id='__pdf_gen__';
     container.innerHTML=html;
     container.style.width='820px';
     container.style.position='absolute';
-    container.style.left='0';container.style.top='0';
-    container.style.zIndex='-9999';
-    container.style.opacity='0';
-    container.style.overflow='hidden';
+    container.style.left='-9999px';
+    container.style.top='0';
     document.body.appendChild(container);
     html2pdf().set({
       margin:[12,10,12,10],
       filename:'Home_Affordability_Report.pdf',
       image:{type:'jpeg',quality:0.98},
-      html2canvas:{scale:2,useCORS:true,letterRendering:true,scrollY:0,windowWidth:820},
+      html2canvas:{scale:2,useCORS:true,letterRendering:true,scrollY:0,
+        onclone:function(doc){var el=doc.getElementById('__pdf_gen__');if(el){el.style.position='static';el.style.left='auto';}}},
       jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
       pagebreak:{mode:['css','legacy'],avoid:['tr','.rt','.bx','.g3','.g2']}
     }).from(container).save().then(()=>{
