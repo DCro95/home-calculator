@@ -30,7 +30,8 @@ const pc=n=>(n*100).toFixed(1)+"%";
 
 // ─── FREE API HELPERS ───────────────────────────────────────────────────────
 // FRED API key — free at https://fred.stlouisfed.org/docs/api/api_key.html
-const FRED_KEY = "YOUR_FREE_FRED_API_KEY_HERE";
+// Set NEXT_PUBLIC_FRED_KEY in .env.local (or Vercel env vars) to enable live mortgage rates
+const FRED_KEY = typeof process!=='undefined'&&process.env?.NEXT_PUBLIC_FRED_KEY||"YOUR_FREE_FRED_API_KEY_HERE";
 
 async function fetchLiveMortgageRates() {
   try {
@@ -48,27 +49,17 @@ async function fetchLiveMortgageRates() {
 
 async function fetchCountyTaxByZip(zip) {
   try {
-    // Step 1: zip → county FIPS via Census Geocoder (free, no key)
-    const geoRes = await fetch(
-      `https://geocoding.geo.census.gov/geocoder/geographies/zipcode/${zip}/current?benchmark=Public_AR_Current&vintage=Current_Current&format=json`
+    // Direct ZCTA lookup via Census ACS5 — no geocoding needed, free, no key
+    const res = await fetch(
+      `https://api.census.gov/data/2022/acs/acs5?get=B25103_001E,B25077_001E,NAME&for=zip%20code%20tabulation%20area:${zip}`
     );
-    const geoData = await geoRes.json();
-    const counties = geoData?.result?.geographies?.Counties;
-    if (!counties?.length) return null;
-    const {STATE: sf, COUNTY: cf, NAME: countyName} = counties[0];
-
-    // Step 2: county FIPS → median property tax + median home value via Census ACS5 (free, no key)
-    const acsRes = await fetch(
-      `https://api.census.gov/data/2022/acs/acs5?get=B25103_001E,B25077_001E,NAME&for=county:${cf}&in=state:${sf}`
-    );
-    const acsData = await acsRes.json();
-    if (!acsData?.[1]) return null;
-    const medTax = parseFloat(acsData[1][0]);
-    const medVal = parseFloat(acsData[1][1]);
-    const fullName = acsData[1][2];
+    const data = await res.json();
+    if (!data?.[1]) return null;
+    const medTax = parseFloat(data[1][0]);
+    const medVal = parseFloat(data[1][1]);
     if (!medTax || !medVal || medVal <= 0) return null;
     const rate = medTax / medVal;
-    return { rate, name: fullName, medTax, medVal };
+    return { rate, name: `Zip ${zip} Area`, medTax, medVal };
   } catch(e) { return null; }
 }
 
@@ -350,19 +341,23 @@ ${c.invEnd.v>c.intSv?'📈 Investing wins by '+$(c.invEnd.v-c.intSv):'🏠 Payin
 
 <div class="nt"><b>Disclaimer:</b> Educational/planning purposes only — not financial, legal, or tax advice. Consult a licensed mortgage professional, tax advisor, and financial planner. Tax calculations use 2025 federal brackets and approximate state rates. Property tax uses ${sn} average effective rate (${(STATES[inp.st]?.p*100||0).toFixed(2)}%) — actual rates vary by county. Investment returns not guaranteed.</div>
 </body></html>`;
-  // Render HTML into hidden container, then use html2pdf.js for real PDF
-  const container=document.createElement('div');
-  container.innerHTML=html;
-  container.style.position='fixed';container.style.left='-9999px';container.style.top='0';
-  container.style.width='820px';
-  document.body.appendChild(container);
+  // Render PDF using html2pdf.js — pass HTML string directly to avoid offscreen DOM issues
   import('html2pdf.js').then(mod=>{
     const html2pdf=mod.default||mod;
+    const container=document.createElement('div');
+    container.innerHTML=html;
+    container.style.width='820px';
+    container.style.position='absolute';
+    container.style.left='0';container.style.top='0';
+    container.style.zIndex='-9999';
+    container.style.opacity='0';
+    container.style.overflow='hidden';
+    document.body.appendChild(container);
     html2pdf().set({
       margin:[12,10,12,10],
       filename:'Home_Affordability_Report.pdf',
       image:{type:'jpeg',quality:0.98},
-      html2canvas:{scale:2,useCORS:true,letterRendering:true},
+      html2canvas:{scale:2,useCORS:true,letterRendering:true,scrollY:0,windowWidth:820},
       jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
       pagebreak:{mode:['css','legacy'],avoid:['tr','.rt','.bx','.g3','.g2']}
     }).from(container).save().then(()=>{
@@ -890,16 +885,18 @@ export default function App(){
         {countyInfo&&<div style={{marginTop:6,padding:6,borderRadius:5,background:"#f0fdf4",border:"1px solid #bbf7d0"}}>
           <div style={{fontSize:9,fontWeight:700,color:"#15803d"}}>✓ {countyInfo.name}</div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4,marginTop:3,textAlign:"center"}}>
-            <div><div style={{fontSize:7,color:"#64748b"}}>County Rate</div><div style={{fontWeight:900,fontSize:11,color:"#15803d"}}>{(countyInfo.rate*100).toFixed(3)}%</div></div>
+            <div><div style={{fontSize:7,color:"#64748b"}}>Effective Rate</div><div style={{fontWeight:900,fontSize:11,color:"#15803d"}}>{(countyInfo.rate*100).toFixed(3)}%</div></div>
             <div><div style={{fontSize:7,color:"#64748b"}}>Median Tax/yr</div><div style={{fontWeight:900,fontSize:11,color:"#c2410c"}}>${countyInfo.medTax?.toLocaleString()}</div></div>
             <div><div style={{fontSize:7,color:"#64748b"}}>Median Home</div><div style={{fontWeight:900,fontSize:11,color:"#1e40af"}}>${countyInfo.medVal?.toLocaleString()}</div></div>
           </div>
-          <div style={{fontSize:8,color:"#64748b",marginTop:3}}>Now using county rate instead of state average for all calculations</div>
-        </div>}
-        {!countyInfo&&FRED_KEY==="YOUR_FREE_FRED_API_KEY_HERE"&&<div style={{marginTop:5,padding:5,borderRadius:5,background:"#fef2f2",border:"1px solid #fecaca",fontSize:8,color:"#dc2626"}}>
-          💡 To enable live mortgage rates: get a free FRED API key at <b>fred.stlouisfed.org</b> and replace YOUR_FREE_FRED_API_KEY_HERE in the code.
+          <div style={{fontSize:8,color:"#64748b",marginTop:3}}>Now using local zip-area rate instead of state average for all calculations</div>
         </div>}
       </div>
+
+      {/* FRED key warning — separate from county lookup which uses Census (no key needed) */}
+      {FRED_KEY==="YOUR_FREE_FRED_API_KEY_HERE"&&<div style={{padding:5,borderRadius:5,background:"#fef2f2",border:"1px solid #fecaca",fontSize:8,color:"#dc2626",marginBottom:8}}>
+        💡 To enable live mortgage rates: get a free FRED API key at <b>fred.stlouisfed.org</b> → set <b>NEXT_PUBLIC_FRED_KEY</b> in your environment variables.
+      </div>}
 
       <Sec title="Purchase & Loan" color="#1e40af">
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
