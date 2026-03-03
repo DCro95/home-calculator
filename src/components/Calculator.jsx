@@ -76,287 +76,243 @@ const TAB_INFO = {
   summary: "Your complete financial health dashboard — monthly cash flow, surplus or shortfall, all four affordability ratios (front-end DTI, back-end DTI, housing-to-net, total expense ratio), and total cash needed to close. Download a full PDF report that combines every tab's data — including scenario comparison — into a single document.",
 };
 
-function genReport(c, inp, sellData, ruleData, budgetData, compareData) {
+function genReport(c, inp, sellData, ruleData, budgetData, compareData, sections) {
+  const S=sections||{};
   const sn=STATES[inp.st]?.n||inp.st;
   const now=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
   const rw=(l,v,cl="")=>`<tr class="${cl}"><td>${l}</td><td class="n">${v}</td></tr>`;
   const hd=t=>`<tr class="h"><td colspan="2">${t}</td></tr>`;
   const rt=(l,v,tg,d)=>{const ok=v<=tg;return`<div class="rt ${ok?'g':'w'}"><div class="rl"><b>${l}</b><br><small>${d}</small></div><div class="rv">${pc(v)}<span>${ok?'✓ GOOD':'⚠ HIGH'}</span></div></div>`;};
-  const ruleRow=(label,actual,target,pct)=>{
-    const ok=actual<=target;
-    return`<tr class="${ok?'':'w'}"><td>${label}</td><td class="n">${$(actual)}</td><td class="n">${$(target)}</td><td class="n" style="color:${ok?'#16a34a':'#dc2626'}">${pc(pct)} ${ok?'✓':'⚠'}</td></tr>`;
-  };
+  const ruleRow=(label,actual,target,pct)=>{const ok=actual<=target;return`<tr class="${ok?'':'w'}"><td>${label}</td><td class="n">${$(actual)}</td><td class="n">${$(target)}</td><td class="n" style="color:${ok?'#16a34a':'#dc2626'}">${pc(pct)} ${ok?'✓':'⚠'}</td></tr>`;};
 
-  // Budget detail helpers
   const {dL:bdL,dV:bdV,eL:beL,ec:bEc}=budgetData||{};
   const debtRows=bdL&&bdV?bdL.map((l,i)=>bdV[i]>0?`<tr><td>${l}</td><td class="n">${$(bdV[i])}</td></tr>`:'').join(''):'';
-
-  // Amortization rows (yearly)
-  const TH2='padding:4px 5px;text-align:center;color:#fff;font-size:9px;font-weight:700;text-transform:uppercase';
+  const TH2='padding:3px 4px;text-align:center;color:#fff;font-size:8px;font-weight:700;text-transform:uppercase';
   const amYrRows=Array.from({length:inp.ty},(_,idx)=>{
     const s0=idx*12,e0=Math.min(s0+12,c.am.std.length);
     const sl=c.am.std.slice(s0,e0),el=c.am.ext.slice(s0,e0);
-    const totPmt=sl.reduce((a,s)=>a+s.p,0);
-    const totPr=sl.reduce((a,s)=>a+s.pr,0);
-    const totIt=sl.reduce((a,s)=>a+s.it,0);
-    const bal=sl[sl.length-1]?.b||0;
-    const extBal=el[el.length-1]?.b||0;
-    const saved=(sl[sl.length-1]?.ci||0)-(el[el.length-1]?.ci||0);
+    const totPmt=sl.reduce((a,s)=>a+s.p,0),totPr=sl.reduce((a,s)=>a+s.pr,0),totIt=sl.reduce((a,s)=>a+s.it,0);
+    const bal=sl[sl.length-1]?.b||0,extBal=el[el.length-1]?.b||0,saved=(sl[sl.length-1]?.ci||0)-(el[el.length-1]?.ci||0);
     const bg=idx%2===0?'#fff':'#f8fafc';
-    const extCols=c.extra>0?`<td style="text-align:right;color:#4A148C;font-weight:700">${$(extBal)}</td><td style="text-align:right;color:#16a34a;font-weight:700">${$(saved)}</td>`:'';
-    return`<tr style="background:${bg}"><td style="padding:3px 5px">Yr ${idx+1}</td><td style="padding:3px 5px;text-align:right">${$(totPmt)}</td><td style="padding:3px 5px;text-align:right;color:#1e40af">${$(totPr)}</td><td style="padding:3px 5px;text-align:right;color:#dc2626">${$(totIt)}</td><td style="padding:3px 5px;text-align:right;font-weight:700">${$(bal)}</td>${extCols}</tr>`;
+    const extCols=c.extra>0?`<td class="n" style="color:#4A148C;font-weight:700">${$(extBal)}</td><td class="n" style="color:#16a34a;font-weight:700">${$(saved)}</td>`:'';
+    return`<tr style="background:${bg}"><td style="padding:2px 4px">Yr ${idx+1}</td><td class="n">${$(totPmt)}</td><td class="n" style="color:#1e40af">${$(totPr)}</td><td class="n" style="color:#dc2626">${$(totIt)}</td><td class="n" style="font-weight:700">${$(bal)}</td>${extCols}</tr>`;
   }).join('');
-
-  // Invest rows
   const invRows=c.inv.map((v,i)=>{
-    const ye=(i+1)*12-1;
-    const sb=c.am.std[Math.min(ye,c.am.std.length-1)]?.b||0;
-    const eb=c.am.ext[Math.min(ye,c.am.ext.length-1)]?.b||0;
+    const ye=(i+1)*12-1,sb=c.am.std[Math.min(ye,c.am.std.length-1)]?.b||0,eb=c.am.ext[Math.min(ye,c.am.ext.length-1)]?.b||0;
     const bg=i%2===0?'#fff':'#f8fafc';
-    return`<tr style="background:${bg}"><td style="padding:3px 5px">${v.y}</td><td style="padding:3px 5px;text-align:right">${$(v.c)}</td><td style="padding:3px 5px;text-align:right;color:#92400e;font-weight:700">${$(v.v)}</td><td style="padding:3px 5px;text-align:right;color:#d97706">${$(v.g)}</td><td style="padding:3px 5px;text-align:right">${$(sb)}</td><td style="padding:3px 5px;text-align:right;color:#4A148C;font-weight:700">${$(eb)}</td></tr>`;
+    return`<tr style="background:${bg}"><td style="padding:2px 4px">${v.y}</td><td class="n">${$(v.c)}</td><td class="n" style="color:#92400e;font-weight:700">${$(v.v)}</td><td class="n" style="color:#d97706">${$(v.g)}</td><td class="n">${$(sb)}</td><td class="n" style="color:#4A148C;font-weight:700">${$(eb)}</td></tr>`;
   }).join('');
-
-  // Split expense rows into two columns
   const half=beL?Math.ceil(beL.length/2):0;
-  const expRowsLeft=beL&&bEc?beL.slice(0,half).map((l,i)=>bEc[i]>0?`<tr><td>${l}${i===12?' <em style="color:#16a34a;font-size:9px">(auto)</em>':''}</td><td class="n">${$(bEc[i])}</td></tr>`:'').join(''):'';
+  const expRowsLeft=beL&&bEc?beL.slice(0,half).map((l,i)=>bEc[i]>0?`<tr><td>${l}${i===12?' <em style="color:#16a34a;font-size:8px">(auto)</em>':''}</td><td class="n">${$(bEc[i])}</td></tr>`:'').join(''):'';
   const expRowsRight=beL&&bEc?beL.slice(half).map((l,i)=>{const ri=i+half;return bEc[ri]>0?`<tr><td>${l}</td><td class="n">${$(bEc[ri])}</td></tr>`:''}).join(''):'';
 
-  // Compare section HTML (built separately to avoid nested template literals)
   let compareHtml='';
-  if(compareData){
-    const colors=['#1e40af','#15803d','#7c3aed'];
-    const bgs=['#eff6ff','#f0fdf4','#faf5ff'];
+  if(S.compare!==false&&compareData){
+    const colors=['#1e40af','#15803d','#7c3aed'],bgs=['#eff6ff','#f0fdf4','#faf5ff'];
     const tableRows=compareData.rows.map((r,i)=>{
       const bg=i%2===0?'#fff':'#f8fafc';
-      const cells=r.vals.map((v,si)=>{
-        const best=r.bestIdx===si;
-        return'<td style="padding:4px 7px;text-align:right;font-weight:'+(best?'900':'600')+';color:'+(best?colors[si]:'#1e293b')+';background:'+(best?bgs[si]:'transparent')+'">'+v+'</td>';
-      }).join('');
-      return'<tr style="background:'+bg+'"><td style="padding:4px 7px;font-weight:600;color:#475569">'+r.label+'</td>'+cells+'</tr>';
+      const cells=r.vals.map((v,si)=>{const best=r.bestIdx===si;return'<td style="padding:3px 5px;text-align:right;font-weight:'+(best?'900':'600')+';color:'+(best?colors[si]:'#1e293b')+';background:'+(best?bgs[si]:'transparent')+'">'+v+'</td>';}).join('');
+      return'<tr style="background:'+bg+'"><td style="padding:3px 5px;font-weight:600;color:#475569">'+r.label+'</td>'+cells+'</tr>';
     }).join('');
     const cards=compareData.scenarios.map((s,i)=>{
       const ok=s.surplus>=0&&s.fDTI<=0.28;
-      return'<div style="flex:1;border-radius:8px;border:2px solid '+(ok?'#bbf7d0':'#fecaca')+';background:'+bgs[i]+';padding:8px;text-align:center">'
-        +'<div style="font-size:11px;font-weight:900;color:'+colors[i]+';margin-bottom:4px">Scenario '+(i+1)+'</div>'
-        +'<div style="font-size:9px;color:#64748b">Home: '+s.price+'</div>'
-        +'<div style="font-size:9px;color:#64748b">Down: '+s.dpAmt+' ('+s.dpPct+')</div>'
-        +'<div style="font-size:14px;font-weight:900;color:'+colors[i]+';margin:4px 0">PITI: '+s.piti+'</div>'
-        +'<div style="font-size:9px;color:'+(s.fDTI<=0.28?'#16a34a':'#dc2626')+'">Front DTI: '+s.fDTIStr+' '+(s.fDTI<=0.28?'✓':'⚠')+'</div>'
-        +'<div style="font-size:9px;color:'+(s.surplus>=0?'#16a34a':'#dc2626')+'">Surplus: '+s.surplusStr+'</div>'
-        +'<div style="margin-top:4px;padding:3px;border-radius:4px;background:'+(ok?'#f0fdf4':'#fef2f2')+';font-size:9px;font-weight:800;color:'+(ok?'#16a34a':'#dc2626')+'">'+(ok?'✓ Affordable':'⚠ Risky')+'</div>'
+      return'<div style="flex:1;border-radius:8px;border:2px solid '+(ok?'#bbf7d0':'#fecaca')+';background:'+bgs[i]+';padding:6px;text-align:center">'
+        +'<div style="font-size:10px;font-weight:900;color:'+colors[i]+';margin-bottom:3px">Scenario '+(i+1)+'</div>'
+        +'<div style="font-size:8px;color:#64748b">Home: '+s.price+'</div>'
+        +'<div style="font-size:8px;color:#64748b">Down: '+s.dpAmt+' ('+s.dpPct+')</div>'
+        +'<div style="font-size:13px;font-weight:900;color:'+colors[i]+';margin:3px 0">PITI: '+s.piti+'</div>'
+        +'<div style="font-size:8px;color:'+(s.fDTI<=0.28?'#16a34a':'#dc2626')+'">Front DTI: '+s.fDTIStr+' '+(s.fDTI<=0.28?'✓':'⚠')+'</div>'
+        +'<div style="font-size:8px;color:'+(s.surplus>=0?'#16a34a':'#dc2626')+'">Surplus: '+s.surplusStr+'</div>'
+        +'<div style="margin-top:3px;padding:2px;border-radius:4px;background:'+(ok?'#f0fdf4':'#fef2f2')+';font-size:8px;font-weight:800;color:'+(ok?'#16a34a':'#dc2626')+'">'+(ok?'✓ Affordable':'⚠ Risky')+'</div>'
         +'</div>';
     }).join('');
-    compareHtml='<div class="page-break"></div>'
-      +'<h2 style="background:#334155">🔀 Scenario Comparison</h2>'
-      +'<table style="font-size:10px"><thead><tr>'
-      +'<th style="padding:5px 7px;background:#1e293b;color:#fff;font-weight:800;text-align:left">Metric</th>'
-      +'<th style="padding:5px 7px;background:#1e40af;color:#fff;font-weight:800;text-align:right">Scenario 1</th>'
-      +'<th style="padding:5px 7px;background:#15803d;color:#fff;font-weight:800;text-align:right">Scenario 2</th>'
-      +'<th style="padding:5px 7px;background:#7c3aed;color:#fff;font-weight:800;text-align:right">Scenario 3</th>'
+    compareHtml='<div class="pb"></div>'
+      +'<h2 style="background:#334155">Scenario Comparison</h2>'
+      +'<table style="font-size:9px"><thead><tr>'
+      +'<th style="padding:4px 5px;background:#1e293b;color:#fff;font-weight:800;text-align:left">Metric</th>'
+      +'<th style="padding:4px 5px;background:#1e40af;color:#fff;font-weight:800;text-align:right">Scenario 1</th>'
+      +'<th style="padding:4px 5px;background:#15803d;color:#fff;font-weight:800;text-align:right">Scenario 2</th>'
+      +'<th style="padding:4px 5px;background:#7c3aed;color:#fff;font-weight:800;text-align:right">Scenario 3</th>'
       +'</tr></thead><tbody>'+tableRows+'</tbody></table>'
-      +'<div style="display:flex;gap:8px;margin-top:8px">'+cards+'</div>'
-      +'<div style="font-size:9px;color:#94a3b8;margin-top:6px">All scenarios use the same income, interest rate, loan term, and expense inputs. Highlighted values indicate the most favorable option.</div>';
+      +'<div style="display:flex;gap:6px;margin-top:6px">'+cards+'</div>'
+      +'<div style="font-size:8px;color:#94a3b8;margin-top:4px">All scenarios use the same income, interest rate, loan term, and expense inputs.</div>';
   }
 
+  // Build TOC
+  const tocItems=[];
+  if(S.income!==false) tocItems.push('Income &amp; Taxes + Purchase &amp; Loan');
+  if(S.maxBorrow!==false) tocItems.push('Maximum Borrowing Power');
+  if(S.cashFlow!==false) tocItems.push('Monthly Cash Flow &amp; Affordability Ratios');
+  if(S.sell!==false&&sellData&&sellData.equity>0) tocItems.push('Sell &amp; Move Up Analysis');
+  if(S.budget!==false) tocItems.push('Budget Detail — Debts &amp; Expenses');
+  if(S.rule5030!==false) tocItems.push('50/30/20 Budget Analysis');
+  if(S.compare!==false&&compareData) tocItems.push('Scenario Comparison');
+  if(S.amort!==false) tocItems.push(inp.ty+'-Year Amortization Schedule');
+  if(S.invest!==false&&c.extra>0) tocItems.push('Pay Down vs Invest Comparison');
+
+  const PW=690;
   const html=`<style>
 *{margin:0;padding:0;box-sizing:border-box}
-</style>
-<div style="font-family:sans-serif;color:#1e293b;padding:32px;max-width:820px;margin:0 auto;font-size:11px;line-height:1.5">
-<style>
-h1{font-size:22px;font-weight:900;color:#0f172a;border-bottom:3px solid #1e40af;padding-bottom:6px;margin-bottom:4px}
-h2{font-size:13px;font-weight:800;color:#fff;background:#1e293b;padding:5px 10px;margin:14px 0 4px;border-radius:4px}
-h2.g{background:#15803d}h2.r{background:#b91c1c}h2.p{background:#4a148c}h2.o{background:#c2410c}h2.teal{background:#0f766e}h2.amber{background:#b45309}
-.sub{font-size:10px;color:#64748b;margin-bottom:10px}.dt{font-size:10px;color:#94a3b8;margin-bottom:14px}
-table{width:100%;border-collapse:collapse;margin-bottom:8px;font-size:11px}td{padding:3px 8px;border-bottom:1px solid #f1f5f9}
+table{width:100%;border-collapse:collapse;margin-bottom:6px;font-size:10px;table-layout:fixed}
+td,th{padding:2px 5px;border-bottom:1px solid #f1f5f9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 td.n{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
 tr.h td{background:#eff6ff;font-weight:800;color:#1e40af;border-bottom:2px solid #bfdbfe}
-tr.t td{background:#f0fdf4;font-weight:900;border-top:2px solid #16a34a;font-size:12px}
+tr.t td{background:#f0fdf4;font-weight:900;border-top:2px solid #16a34a;font-size:11px}
 tr.w td{background:#fef2f2;color:#dc2626}tr.hl td{background:#eff6ff;font-weight:800}
-.tc{display:flex;gap:14px}.tc>div{flex:1}
-.rt{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;border-radius:6px;margin-bottom:3px;border:1px solid #e2e8f0}
+h1{font-size:18px;font-weight:900;color:#0f172a;border-bottom:3px solid #1e40af;padding-bottom:4px;margin-bottom:3px}
+h2{font-size:11px;font-weight:800;color:#fff;background:#1e293b;padding:4px 8px;margin:10px 0 3px;border-radius:3px}
+h2.g{background:#15803d}h2.r{background:#b91c1c}h2.p{background:#4a148c}h2.o{background:#c2410c}h2.teal{background:#0f766e}
+.tc{display:flex;gap:10px}.tc>div{flex:1;min-width:0}
+.rt{display:flex;justify-content:space-between;align-items:center;padding:4px 8px;border-radius:5px;margin-bottom:2px;border:1px solid #e2e8f0}
 .rt.g{background:#f0fdf4;border-color:#bbf7d0}.rt.w{background:#fef2f2;border-color:#fecaca}
-.rl{font-size:10px}.rl small{color:#94a3b8;font-size:9px}
-.rv{text-align:right;font-size:15px;font-weight:900}.rv span{font-size:9px;display:block}
+.rl{font-size:9px}.rl small{color:#94a3b8;font-size:8px}
+.rv{text-align:right;font-size:13px;font-weight:900}.rv span{font-size:8px;display:block}
 .rt.g .rv{color:#16a34a}.rt.w .rv{color:#dc2626}
-.bx{border:2px solid #1e40af;border-radius:8px;padding:10px;margin:8px 0;text-align:center}
+.bx{border:2px solid #1e40af;border-radius:6px;padding:6px;margin:5px 0;text-align:center}
 .bx.g{border-color:#16a34a;background:#f0fdf4}.bx.r{border-color:#dc2626;background:#fef2f2}.bx.o{border-color:#c2410c;background:#fff7ed}
-.big{font-size:22px;font-weight:900}.lb{font-size:9px;color:#64748b;margin-bottom:2px}
+.big{font-size:18px;font-weight:900}.lb{font-size:8px;color:#64748b;margin-bottom:1px}
 .bx.g .big{color:#16a34a}.bx.o .big{color:#c2410c}
-.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:6px 0}.g3 .bx{margin:0}
-.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0}.g2 .bx{margin:0}
-.nt{font-size:9px;color:#94a3b8;margin-top:14px;padding-top:8px;border-top:1px solid #e2e8f0}
-.toc{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:10px}
-.toc h3{font-size:11px;font-weight:800;color:#0f172a;margin-bottom:6px}
-.toc ol{padding-left:16px;line-height:1.8;color:#475569}
-.page-break{page-break-before:always;margin-top:20px}
-@media print{body{padding:16px;font-size:10px}h2{break-after:avoid}table{break-inside:avoid}.tc{break-inside:avoid}.page-break{page-break-before:always}}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin:4px 0}.g3 .bx{margin:0}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:4px 0}.g2 .bx{margin:0}
+.nt{font-size:8px;color:#94a3b8;margin-top:10px;padding-top:6px;border-top:1px solid #e2e8f0}
+.toc{background:#f8fafc;border:1px solid #e2e8f0;border-radius:5px;padding:8px 10px;margin-bottom:10px;font-size:9px}
+.toc b{font-size:10px;color:#0f172a;display:block;margin-bottom:4px}
+.toc ol{padding-left:14px;line-height:1.7;color:#475569}
+.pb{page-break-before:always;margin-top:14px}
 </style>
-<h1>🏠 Home Affordability Report</h1>
-<div class="sub">${sn} • ${inp.fl} Filing • ${inp.ty}-Year ${inp.lt}</div>
-<div class="dt">Generated ${now}</div>
+<div style="font-family:sans-serif;color:#1e293b;padding:12px 16px;width:${PW}px;font-size:10px;line-height:1.4;overflow:hidden">
+<h1>Home Affordability Report</h1>
+<div style="font-size:9px;color:#64748b;margin-bottom:6px">${sn} &bull; ${inp.fl} Filing &bull; ${inp.ty}-Year ${inp.lt}</div>
+<div style="font-size:8px;color:#94a3b8;margin-bottom:10px">Generated ${now}</div>
+<div class="toc"><b>Report Contents</b><ol>${tocItems.map(t=>'<li>'+t+'</li>').join('')}</ol></div>
 
-<div class="toc"><h3>📋 Report Contents</h3><ol>
-<li>Income &amp; Taxes + Purchase &amp; Loan</li>
-<li>Maximum Borrowing Power</li>
-<li>Monthly Cash Flow &amp; Affordability Ratios</li>
-${sellData&&sellData.equity>0?'<li>Sell &amp; Move Up Analysis</li>':''}
-<li>Budget Detail — Debts &amp; Expenses (all line items)</li>
-<li>50/30/20 Budget Analysis</li>
-<li>Scenario Comparison (3 scenarios)</li>
-<li>${inp.ty}-Year Amortization Schedule${c.extra>0?' with Extra Payment':''}</li>
-${c.extra>0?`<li>Pay Down vs Invest Comparison (${inp.sr}% return)</li>`:''}
-</ol></div>
-
-<div class="tc"><div>
-<h2>💰 Income & Taxes</h2><table>
-${rw("Household Gross Income",$(c.gross))}${rw("Pre-Tax Deductions",$(c.pretax))}${rw("Taxable Income",$(c.taxable))}
-${hd("TAX BREAKDOWN")}${rw("Federal Income Tax",$(c.fedTx))}${rw(sn+" State Tax",$(c.stTx))}${rw("FICA (SS + Medicare)",$(c.fica))}
-${rw("Total Annual Tax",$(c.totTx),"hl")}${rw("Effective Rate",pc(c.gross>0?c.totTx/c.gross:0))}
+${S.income!==false?`<div class="tc"><div>
+<h2>Income &amp; Taxes</h2><table>
+${rw("Gross Income",$(c.gross))}${rw("Pre-Tax Deductions",$(c.pretax))}${rw("Taxable Income",$(c.taxable))}
+${hd("TAX BREAKDOWN")}${rw("Federal Tax",$(c.fedTx))}${rw(sn+" State Tax",$(c.stTx))}${rw("FICA",$(c.fica))}
+${rw("Total Tax",$(c.totTx),"hl")}${rw("Effective Rate",pc(c.gross>0?c.totTx/c.gross:0))}
 ${rw("Annual Take-Home",$(c.netA),"t")}${rw("Monthly Take-Home",$(c.netM),"t")}
 </table></div><div>
-<h2>🏠 Purchase & Loan</h2><table>
-${rw("Home Price",$(inp.price))}${rw("Down Payment ("+inp.dp+"%)",$(c.dpAmt))}${rw("Loan Amount",$(c.loan))}
-${rw("Interest Rate",(c.rate*100).toFixed(3)+"%")}${rw("Loan Term",inp.ty+" years")}
-${rw("Closing Costs (~"+inp.cp+"%)",$(c.closing))}${rw("Total Cash Needed",$(c.dpAmt+c.closing),"hl")}
-${hd("MONTHLY PITI")}${rw("Principal & Interest",$2(c.mPI))}${rw("Property Tax",$2(c.mTx))}${rw("Insurance",$2(c.mIns))}
-${c.hasPMI?rw("PMI",$2(c.mPMI)):""}${rw("TOTAL MONTHLY PITI",$(c.piti),"t")}${rw("Total Interest Over Loan",$(c.am.tiS))}
-</table></div></div>
+<h2>Purchase &amp; Loan</h2><table>
+${rw("Home Price",$(inp.price))}${rw("Down Pmt ("+inp.dp+"%)",$(c.dpAmt))}${rw("Loan Amount",$(c.loan))}
+${rw("Rate",(c.rate*100).toFixed(3)+"%")}${rw("Term",inp.ty+" yr")}
+${rw("Closing (~"+inp.cp+"%)",$(c.closing))}${rw("Cash Needed",$(c.dpAmt+c.closing),"hl")}
+${hd("MONTHLY PITI")}${rw("P&I",$2(c.mPI))}${rw("Property Tax",$2(c.mTx))}${rw("Insurance",$2(c.mIns))}
+${c.hasPMI?rw("PMI",$2(c.mPMI)):""}${rw("TOTAL PITI",$(c.piti),"t")}${rw("Total Interest",$(c.am.tiS))}
+</table></div></div>`:''}
 
-<h2 class="g">🎯 Maximum Borrowing Power</h2>
+${S.maxBorrow!==false?`<h2 class="g">Max Borrowing Power</h2>
 <div class="g3">
-<div class="bx g"><div class="lb">Max Home (28% Gross DTI)</div><div class="big">${$(c.mx28)}</div></div>
-<div class="bx g"><div class="lb">Max Home (45% Gross DTI)</div><div class="big">${$(c.mx45)}</div></div>
-<div class="bx"><div class="lb">Max Home (30% Net Income)</div><div class="big">${$(c.mxN)}</div></div>
+<div class="bx g"><div class="lb">28% Gross DTI</div><div class="big">${$(c.mx28)}</div></div>
+<div class="bx g"><div class="lb">45% Gross DTI</div><div class="big">${$(c.mx45)}</div></div>
+<div class="bx"><div class="lb">30% Net Income</div><div class="big">${$(c.mxN)}</div></div>
 </div>
-<table style="margin-top:4px;font-size:10px">
-<tr class="h"><td>Method</td><td class="n">Max Home</td><td class="n">Max Loan</td><td class="n">Max PITI/mo</td><td class="n">Status vs ${$(inp.price)}</td></tr>
-<tr><td>Conservative — 28% Front-End DTI</td><td class="n">${$(Math.max(c.mx28,0))}</td><td class="n">${$(Math.max(c.mx28*(1-inp.dp/100),0))}</td><td class="n">${$(Math.max(c.grM*.28,0))}</td><td class="n" style="color:${inp.price<=c.mx28?'#16a34a':'#dc2626'}">${inp.price<=c.mx28?'✓ Under limit':'⚠ Over limit'}</td></tr>
-<tr><td>Aggressive — 45% Back-End DTI</td><td class="n">${$(Math.max(c.mx45,0))}</td><td class="n">${$(Math.max(c.mx45*(1-inp.dp/100),0))}</td><td class="n">${$(Math.max(c.grM*.45-c.totD,0))}</td><td class="n" style="color:${inp.price<=c.mx45?'#16a34a':'#dc2626'}">${inp.price<=c.mx45?'✓ Under limit':'⚠ Over limit'}</td></tr>
-<tr><td>Conservative — 30% of Net Take-Home</td><td class="n">${$(Math.max(c.mxN,0))}</td><td class="n">${$(Math.max(c.mxN*(1-inp.dp/100),0))}</td><td class="n">${$(Math.max(c.netM*.3,0))}</td><td class="n" style="color:${inp.price<=c.mxN?'#16a34a':'#dc2626'}">${inp.price<=c.mxN?'✓ Under limit':'⚠ Over limit'}</td></tr>
-</table>
+<table style="font-size:9px">
+<tr class="h"><td>Method</td><td class="n">Max Home</td><td class="n">Max Loan</td><td class="n">PITI/mo</td><td class="n">Status</td></tr>
+<tr><td>28% Front DTI</td><td class="n">${$(Math.max(c.mx28,0))}</td><td class="n">${$(Math.max(c.mx28*(1-inp.dp/100),0))}</td><td class="n">${$(Math.max(c.grM*.28,0))}</td><td class="n" style="color:${inp.price<=c.mx28?'#16a34a':'#dc2626'}">${inp.price<=c.mx28?'✓ OK':'⚠ Over'}</td></tr>
+<tr><td>45% Back DTI</td><td class="n">${$(Math.max(c.mx45,0))}</td><td class="n">${$(Math.max(c.mx45*(1-inp.dp/100),0))}</td><td class="n">${$(Math.max(c.grM*.45-c.totD,0))}</td><td class="n" style="color:${inp.price<=c.mx45?'#16a34a':'#dc2626'}">${inp.price<=c.mx45?'✓ OK':'⚠ Over'}</td></tr>
+<tr><td>30% Net</td><td class="n">${$(Math.max(c.mxN,0))}</td><td class="n">${$(Math.max(c.mxN*(1-inp.dp/100),0))}</td><td class="n">${$(Math.max(c.netM*.3,0))}</td><td class="n" style="color:${inp.price<=c.mxN?'#16a34a':'#dc2626'}">${inp.price<=c.mxN?'✓ OK':'⚠ Over'}</td></tr>
+</table>`:''}
 
-<h2>💵 Monthly Cash Flow</h2><table>
-${rw("Monthly Net Income",$(c.netM))}${rw("Housing (PITI)","−"+$(c.piti))}
-${c.extra>0?rw("Extra Mortgage Payment","−"+$(c.extra)):""}
-${rw("Obligated Debts","−"+$(c.totD))}${rw("Discretionary Expenses","−"+$(c.totE))}
-${rw(c.surplus>=0?"Monthly Surplus":"Monthly Shortfall",$(c.surplus),c.surplus>=0?"t":"w")}
+${S.cashFlow!==false?`<h2>Monthly Cash Flow</h2><table>
+${rw("Net Income",$(c.netM))}${rw("Housing (PITI)","−"+$(c.piti))}
+${c.extra>0?rw("Extra Pmt","−"+$(c.extra)):""}
+${rw("Debts","−"+$(c.totD))}${rw("Expenses","−"+$(c.totE))}
+${rw(c.surplus>=0?"Surplus":"Shortfall",$(c.surplus),c.surplus>=0?"t":"w")}
 </table>
-
-<h2>📊 Affordability Ratios</h2>
+<h2>Affordability Ratios</h2>
 ${rt("Front-End DTI (Housing ÷ Gross)",c.fDTI,.28,"Lender guideline ≤ 28%")}
 ${rt("Back-End DTI (Housing+Debts ÷ Gross)",c.bDTI,.45,"Conventional max ≤ 45%")}
 ${rt("Housing-to-Net Ratio",c.hNet,.30,"Comfort target ≤ 30%")}
-${rt("Total Expense-to-Net",c.eRat,.85,"Target ≤ 85% for 15%+ buffer")}
+${rt("Total Expense-to-Net",c.eRat,.85,"Target ≤ 85% for buffer")}`:''}
 
-${sellData&&sellData.equity>0?`
-<h2 class="o">🏡 Sell & Move Up Analysis</h2>
-<div class="tc"><div>
-<table>
-${rw("Current Home Value",$(sellData.curVal))}${rw("Remaining Mortgage",$(sellData.curOwed))}
-${rw("Selling Costs ("+sellData.sellCostPct+"%)","−"+$(sellData.sellCosts))}${rw("Net Equity",$(sellData.equity),"hl")}
-</table></div><div>
-<table>
-${rw("New Purchase Price",$(sellData.newPr))}${rw("New Loan Type",sellData.newLt==="fixed"?"Fixed Rate":"7/1 ARM")}
-${rw("New Loan Term",sellData.newTy+" years")}${rw("New Loan Amount",$(sellData.newLoan),"hl")}
-${hd("NEW MONTHLY PITI")}${rw("Principal & Interest",$2(sellData.newMPI))}${rw("Property Tax",$2(sellData.newMTx))}${rw("Insurance",$2(sellData.newMIns))}
-${sellData.newHasPMI?rw("PMI",$2(sellData.newMPMI)):""}${rw("Total New PITI",$(sellData.newPiti),"t")}
+${S.sell!==false&&sellData&&sellData.equity>0?`
+<h2 class="o">Sell &amp; Move Up</h2>
+<div class="tc"><div><table>
+${rw("Current Value",$(sellData.curVal))}${rw("Remaining Mtg",$(sellData.curOwed))}
+${rw("Sell Costs ("+sellData.sellCostPct+"%)","−"+$(sellData.sellCosts))}${rw("Net Equity",$(sellData.equity),"hl")}
+</table></div><div><table>
+${rw("New Price",$(sellData.newPr))}${rw("New Loan",$(sellData.newLoan),"hl")}
+${hd("NEW PITI")}${rw("P&I",$2(sellData.newMPI))}${rw("Tax",$2(sellData.newMTx))}${rw("Ins",$2(sellData.newMIns))}
+${sellData.newHasPMI?rw("PMI",$2(sellData.newMPMI)):""}${rw("Total PITI",$(sellData.newPiti),"t")}
 </table></div></div>
-<div class="g3" style="margin-top:6px">
+<div class="g3" style="margin-top:4px">
 <div class="bx r"><div class="lb">Current PITI</div><div class="big">${$(c.piti)}</div></div>
 <div class="bx ${sellData.newPiti<=c.piti?'g':'r'}"><div class="lb">New PITI</div><div class="big">${$(sellData.newPiti)}</div></div>
-<div class="bx ${sellData.newPiti<=c.piti?'g':'r'}"><div class="lb">Monthly Change</div><div class="big">${sellData.newPiti<=c.piti?'⬇ −'+$(c.piti-sellData.newPiti):'⬆ +'+$(sellData.newPiti-c.piti)}</div></div>
+<div class="bx ${sellData.newPiti<=c.piti?'g':'r'}"><div class="lb">Change</div><div class="big">${sellData.newPiti<=c.piti?'−'+$(c.piti-sellData.newPiti):'+'+$(sellData.newPiti-c.piti)}</div></div>
 </div>
-<table style="margin-top:6px"><tr class="h"><td colspan="2">CASH AT CLOSING (NEW HOME)</td></tr>
-${rw("Down Payment Applied from Equity",$(sellData.newDpAmt)+" ("+pc(sellData.newDpPct)+")")}
-${rw("Closing Costs",$(sellData.newClosing))}${rw("Total Cash Needed at Closing",$(sellData.cashNeeded),"hl")}</table>`:""}
+<table><tr class="h"><td colspan="2">CASH AT CLOSING</td></tr>
+${rw("Down Pmt from Equity",$(sellData.newDpAmt)+" ("+pc(sellData.newDpPct)+")")}
+${rw("Closing Costs",$(sellData.newClosing))}${rw("Cash Needed",$(sellData.cashNeeded),"hl")}</table>`:""}
 
-<div class="page-break"></div>
-<h2 style="background:#dc2626">📋 Budget Detail — Obligated Debts</h2>
-<table>
-<tr class="h"><td>Debt Item</td><td class="n">Monthly Amount</td></tr>
-${debtRows||'<tr><td style="color:#94a3b8;font-style:italic">No debts entered</td><td class="n">$0</td></tr>'}
-${rw("Total Obligated Debts",$(c.totD),"t")}
-</table>
-
-<h2 style="background:#b45309">📋 Budget Detail — Discretionary Expenses</h2>
+${S.budget!==false?`<div class="pb"></div>
+<h2 style="background:#dc2626">Obligated Debts</h2>
+<table><tr class="h"><td>Debt</td><td class="n">Monthly</td></tr>
+${debtRows||'<tr><td style="color:#94a3b8;font-style:italic">None</td><td class="n">$0</td></tr>'}
+${rw("Total Debts",$(c.totD),"t")}</table>
+<h2 style="background:#b45309">Discretionary Expenses</h2>
 <div class="tc">
 <div><table><tr class="h"><td>Expense</td><td class="n">Monthly</td></tr>${expRowsLeft}</table></div>
 <div><table><tr class="h"><td>Expense</td><td class="n">Monthly</td></tr>${expRowsRight}</table></div>
 </div>
-<table>${rw("Total Discretionary Expenses",$(c.totE),"t")}${rw("Total Monthly Outflows",$(c.totOut),"hl")}</table>
+<table>${rw("Total Expenses",$(c.totE),"t")}${rw("Total Outflows",$(c.totOut),"hl")}</table>`:''}
 
-<h2 class="teal">⚖️ 50/30/20 Budget Analysis</h2>
-${ruleData?`<table>
-<tr class="h"><td>Category</td><td class="n">Actual/mo</td><td class="n">Target/mo</td><td class="n">% of Net</td></tr>
-${ruleRow("🏠 Needs (50% target)",ruleData.needs,ruleData.t50,ruleData.needs/c.netM)}
-${ruleRow("🎯 Wants (30% target)",ruleData.wants,ruleData.t30,ruleData.wants/c.netM)}
-${ruleRow("💰 Savings (20% target)",ruleData.savings,ruleData.t20,ruleData.savings/c.netM)}
+${S.rule5030!==false&&ruleData?`<h2 class="teal">50/30/20 Budget Analysis</h2>
+<table><tr class="h"><td>Category</td><td class="n">Actual</td><td class="n">Target</td><td class="n">% of Net</td></tr>
+${ruleRow("Needs (50%)",ruleData.needs,ruleData.t50,ruleData.needs/c.netM)}
+${ruleRow("Wants (30%)",ruleData.wants,ruleData.t30,ruleData.wants/c.netM)}
+${ruleRow("Savings (20%)",ruleData.savings,ruleData.t20,ruleData.savings/c.netM)}
 </table>
 <div class="g3">
-<div class="bx ${ruleData.needs<=ruleData.t50?'g':'r'}"><div class="lb">Needs — ${pc(ruleData.needs/c.netM)}</div><div class="big">${$(ruleData.needs)}</div><div style="font-size:9px;color:#64748b">target ≤ ${$(ruleData.t50)}</div></div>
-<div class="bx ${ruleData.wants<=ruleData.t30?'g':'r'}"><div class="lb">Wants — ${pc(ruleData.wants/c.netM)}</div><div class="big">${$(ruleData.wants)}</div><div style="font-size:9px;color:#64748b">target ≤ ${$(ruleData.t30)}</div></div>
-<div class="bx ${ruleData.savings>=ruleData.t20?'g':'r'}"><div class="lb">Savings — ${pc(ruleData.savings/c.netM)}</div><div class="big">${$(ruleData.savings)}</div><div style="font-size:9px;color:#64748b">target ≥ ${$(ruleData.t20)}</div></div>
-</div>`:''}
-<div class="bx" style="margin-top:8px"><div class="lb">6-Month Emergency Fund Target</div><div class="big" style="color:#92400e">${$(c.totOut*6)}</div></div>
+<div class="bx ${ruleData.needs<=ruleData.t50?'g':'r'}"><div class="lb">Needs ${pc(ruleData.needs/c.netM)}</div><div class="big">${$(ruleData.needs)}</div></div>
+<div class="bx ${ruleData.wants<=ruleData.t30?'g':'r'}"><div class="lb">Wants ${pc(ruleData.wants/c.netM)}</div><div class="big">${$(ruleData.wants)}</div></div>
+<div class="bx ${ruleData.savings>=ruleData.t20?'g':'r'}"><div class="lb">Savings ${pc(ruleData.savings/c.netM)}</div><div class="big">${$(ruleData.savings)}</div></div>
+</div>
+<div class="bx" style="margin-top:6px"><div class="lb">6-Month Emergency Fund</div><div class="big" style="color:#92400e">${$(c.totOut*6)}</div></div>`:''}
 
 ${compareHtml}
 
-<div class="page-break"></div>
-<h2 class="p">📅 ${inp.ty}-Year Amortization Schedule${c.extra>0?' — '+$(c.extra)+'/mo Extra Payment':''}</h2>
-${c.extra>0?`<div style="display:flex;gap:10px;margin-bottom:6px;font-size:10px">
-<span style="padding:4px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:5px"><b style="color:#15803d">Interest Saved:</b> ${$(c.intSv)}</span>
-<span style="padding:4px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:5px"><b style="color:#15803d">Payoff in:</b> ${(c.am.po/12).toFixed(1)} yrs (${((inp.ty*12-c.am.po)/12).toFixed(1)} yrs early)</span>
+${S.amort!==false?`<div class="pb"></div>
+<h2 class="p">${inp.ty}-Yr Amortization${c.extra>0?' — '+$(c.extra)+'/mo Extra':''}</h2>
+${c.extra>0?`<div style="display:flex;gap:6px;margin-bottom:4px;font-size:9px">
+<span style="padding:3px 8px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:4px"><b style="color:#15803d">Saved:</b> ${$(c.intSv)}</span>
+<span style="padding:3px 8px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:4px"><b style="color:#15803d">Payoff:</b> ${(c.am.po/12).toFixed(1)} yrs</span>
 </div>`:''}
-<table style="font-size:10px">
+<table style="font-size:9px">
 <thead><tr>
-<th style="${TH2};background:#1e293b">Year</th>
-<th style="${TH2};background:#1e40af">Ann. Pmt</th>
-<th style="${TH2};background:#1e40af">Principal</th>
-<th style="${TH2};background:#dc2626">Interest</th>
-<th style="${TH2};background:#1e40af">Balance</th>
-${c.extra>0?`<th style="${TH2};background:#4A148C">Extra Bal</th><th style="${TH2};background:#15803d">Int. Saved</th>`:''}
-</tr></thead>
-<tbody>${amYrRows}</tbody>
-</table>
+<th style="${TH2};background:#1e293b">Year</th><th style="${TH2};background:#1e40af">Pmt</th><th style="${TH2};background:#1e40af">Principal</th><th style="${TH2};background:#dc2626">Interest</th><th style="${TH2};background:#1e40af">Balance</th>
+${c.extra>0?`<th style="${TH2};background:#4A148C">Extra Bal</th><th style="${TH2};background:#15803d">Saved</th>`:''}
+</tr></thead><tbody>${amYrRows}</tbody></table>`:''}
 
-${c.extra>0?`
-<div class="page-break"></div>
-<h2 class="p">📈 Pay Down vs Invest — ${$(c.extra)}/mo Extra at ${inp.sr}% Annual Return</h2>
-<div class="g2" style="margin-bottom:8px">
-<div class="bx g"><div class="lb">Pay Down Mortgage: Interest Saved</div><div class="big">${$(c.intSv)}</div><div style="font-size:9px;color:#64748b">${(c.rate*100).toFixed(2)}% guaranteed • Payoff ${(c.am.po/12).toFixed(1)} yrs</div></div>
-<div class="bx ${c.invEnd.v>c.intSv?'o':'g'}"><div class="lb">Invest in Market: Portfolio at Yr ${inp.ty}</div><div class="big">${$(c.invEnd.v)}</div><div style="font-size:9px;color:#64748b">Gains: ${$(c.invEnd.g)} • ${inp.sr}% return assumed</div></div>
+${S.invest!==false&&c.extra>0?`<div class="pb"></div>
+<h2 class="p">Pay Down vs Invest — ${$(c.extra)}/mo at ${inp.sr}%</h2>
+<div class="g2" style="margin-bottom:6px">
+<div class="bx g"><div class="lb">Pay Down: Interest Saved</div><div class="big">${$(c.intSv)}</div></div>
+<div class="bx ${c.invEnd.v>c.intSv?'o':'g'}"><div class="lb">Invest: Portfolio Yr ${inp.ty}</div><div class="big">${$(c.invEnd.v)}</div></div>
 </div>
-<div style="text-align:center;padding:8px;border-radius:7px;background:${c.invEnd.v>c.intSv?'#fffbeb':'#f0fdf4'};border:2px solid ${c.invEnd.v>c.intSv?'#f59e0b':'#16a34a'};margin-bottom:8px;font-size:13px;font-weight:900;color:${c.invEnd.v>c.intSv?'#92400e':'#15803d'}">
-${c.invEnd.v>c.intSv?'📈 Investing wins by '+$(c.invEnd.v-c.intSv):'🏠 Paying down mortgage wins by '+$(c.intSv-c.invEnd.v)}
+<div style="text-align:center;padding:6px;border-radius:5px;background:${c.invEnd.v>c.intSv?'#fffbeb':'#f0fdf4'};border:2px solid ${c.invEnd.v>c.intSv?'#f59e0b':'#16a34a'};margin-bottom:6px;font-size:11px;font-weight:900;color:${c.invEnd.v>c.intSv?'#92400e':'#15803d'}">
+${c.invEnd.v>c.intSv?'Investing wins by '+$(c.invEnd.v-c.intSv):'Paying down wins by '+$(c.intSv-c.invEnd.v)}
 </div>
-<table style="font-size:10px">
-<thead><tr>
-<th style="${TH2};background:#1e293b">Year</th>
-<th style="${TH2};background:#b45309">Invested</th>
-<th style="${TH2};background:#b45309">Portfolio</th>
-<th style="${TH2};background:#b45309">Gains</th>
-<th style="${TH2};background:#1e40af">Std Balance</th>
-<th style="${TH2};background:#4A148C">Extra-Pmt Bal</th>
-</tr></thead>
-<tbody>${invRows}</tbody>
-</table>`:''}
+<table style="font-size:9px"><thead><tr>
+<th style="${TH2};background:#1e293b">Year</th><th style="${TH2};background:#b45309">Invested</th><th style="${TH2};background:#b45309">Portfolio</th><th style="${TH2};background:#b45309">Gains</th><th style="${TH2};background:#1e40af">Std Bal</th><th style="${TH2};background:#4A148C">Extra Bal</th>
+</tr></thead><tbody>${invRows}</tbody></table>`:''}
 
-<div class="nt"><b>Disclaimer:</b> Educational/planning purposes only — not financial, legal, or tax advice. Consult a licensed mortgage professional, tax advisor, and financial planner. Tax calculations use 2025 federal brackets and approximate state rates. Property tax uses ${sn} average effective rate (${(STATES[inp.st]?.p*100||0).toFixed(2)}%) — actual rates vary by county. Investment returns not guaranteed.</div>
+<div class="nt"><b>Disclaimer:</b> Educational/planning purposes only — not financial, legal, or tax advice. Tax calculations use 2025 federal brackets. Property tax uses ${sn} avg rate (${(STATES[inp.st]?.p*100||0).toFixed(2)}%) — actual rates vary. Investment returns not guaranteed.</div>
 </div>`;
-  // Render PDF — append container, let html2canvas capture, then remove
+
   import('html2pdf.js').then(mod=>{
     const html2pdf=mod.default||mod;
     const container=document.createElement('div');
     container.innerHTML=html;
-    container.style.width='820px';
+    container.style.width=PW+'px';
     container.style.background='#fff';
     document.body.appendChild(container);
     html2pdf().set({
-      margin:[12,10,12,10],
+      margin:[10,8,10,8],
       filename:'Home_Affordability_Report.pdf',
       image:{type:'jpeg',quality:0.98},
-      html2canvas:{scale:2,useCORS:true,letterRendering:true},
-      jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
+      html2canvas:{scale:2,useCORS:true,letterRendering:true,width:PW},
+      jsPDF:{unit:'mm',format:'letter',orientation:'portrait'},
       pagebreak:{mode:['css','legacy'],avoid:['tr','.rt','.bx','.g3','.g2']}
     }).from(container).save().then(()=>{
       document.body.removeChild(container);
@@ -478,6 +434,11 @@ export default function App(){
   // ── Scenario compare state ────────────────────────────────────────────────
   const[sc2pr,setSc2pr]=useState(400000);const[sc2dp,setSc2dp]=useState(10);
   const[sc3pr,setSc3pr]=useState(450000);const[sc3dp,setSc3dp]=useState(20);
+
+  // PDF section selection modal
+  const[showPdfModal,setShowPdfModal]=useState(false);
+  const[pdfSec,setPdfSec]=useState({income:true,maxBorrow:true,cashFlow:true,sell:true,budget:true,rule5030:true,compare:true,amort:true,invest:true});
+  const togglePdfSec=(k)=>setPdfSec(p=>({...p,[k]:!p[k]}));
 
   // Fetch live rates on mount (only if FRED key is set)
   useEffect(()=>{
@@ -633,7 +594,7 @@ export default function App(){
           <div style={{fontSize:14,fontWeight:900,color:"#fff"}}>🏠 Home Affordability Calculator</div>
           <div style={{fontSize:9,color:"#93c5fd",marginTop:1}}>Mortgage, tax & budget analysis • All 50 states + DC</div>
         </div>
-        <button onClick={e=>{e.stopPropagation();genReport(c,{st,fl:flL,ty,lt:ltL,price:pr,dp,cp,sr},sellCalc,ruleCalc,{dL,dV,eL,ec:c.ec},compareCalc);}}
+        <button onClick={e=>{e.stopPropagation();setShowPdfModal(true);}}
           style={{padding:"6px 12px",borderRadius:7,background:"linear-gradient(135deg,#22c55e,#16a34a)",color:"#fff",fontSize:9,fontWeight:800,border:"none",cursor:"pointer",boxShadow:"0 2px 8px #16a34a40"}}>📄 Download PDF</button>
       </div>
     </div>
@@ -1227,12 +1188,11 @@ export default function App(){
         </div>
       </Sec>
       <div style={{textAlign:"center",marginTop:6}}>
-        <button onClick={()=>genReport(c,{st,fl:flL,ty,lt:ltL,price:pr,dp,cp,sr},sellCalc,ruleCalc,{dL,dV,eL,ec:c.ec},compareCalc)}
+        <button onClick={()=>setShowPdfModal(true)}
           style={{padding:"8px 20px",borderRadius:8,background:"linear-gradient(135deg,#22c55e,#16a34a)",color:"#fff",fontSize:11,fontWeight:800,border:"none",cursor:"pointer",boxShadow:"0 2px 10px #16a34a40"}}>
           📄 Download Full Report
         </button>
-        <div style={{fontSize:8,color:"#94a3b8",marginTop:3}}>Downloads a complete PDF report</div>
-        <div style={{fontSize:8,color:"#94a3b8",marginTop:2}}>Includes: Income, Mortgage, Max Loan, Amortize, Invest, Budget, Sell Analysis, 50/30/20 & Scenario Comparison</div>
+        <div style={{fontSize:8,color:"#94a3b8",marginTop:3}}>Choose which sections to include in your PDF</div>
       </div>
       <div style={{borderRadius:6,padding:6,fontSize:8,background:"#f8fafc",border:"1px solid #e2e8f0",color:"#94a3b8",marginTop:8}}>
         <b>Disclaimer:</b> Estimates only. Consult mortgage professional & tax advisor. State rates approximate. Property tax uses state average — varies by county. Investment returns not guaranteed.
@@ -1396,5 +1356,42 @@ export default function App(){
 
 
     </div>
+
+    {/* ── PDF Section Selection Modal ── */}
+    {showPdfModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setShowPdfModal(false)}>
+      <div style={{background:"#fff",borderRadius:12,padding:16,width:320,maxHeight:"80vh",overflow:"auto",boxShadow:"0 8px 30px rgba(0,0,0,.3)"}} onClick={e=>e.stopPropagation()}>
+        <div style={{fontSize:14,fontWeight:900,color:"#0f172a",marginBottom:3}}>PDF Report Sections</div>
+        <div style={{fontSize:9,color:"#64748b",marginBottom:10}}>Choose which sections to include in your report</div>
+        {[
+          {k:"income",l:"Income & Taxes + Purchase & Loan",icon:"💰"},
+          {k:"maxBorrow",l:"Maximum Borrowing Power",icon:"🎯"},
+          {k:"cashFlow",l:"Cash Flow & Affordability Ratios",icon:"💵"},
+          {k:"sell",l:"Sell & Move Up Analysis",icon:"🏡",hide:!(sellCalc&&sellCalc.equity>0)},
+          {k:"budget",l:"Budget Detail (Debts & Expenses)",icon:"📋"},
+          {k:"rule5030",l:"50/30/20 Budget Analysis",icon:"⚖️"},
+          {k:"compare",l:"Scenario Comparison",icon:"🔀"},
+          {k:"amort",l:"Amortization Schedule",icon:"📅"},
+          {k:"invest",l:"Pay Down vs Invest",icon:"📈",hide:!(c.extra>0)},
+        ].filter(s=>!s.hide).map(s=>(
+          <label key={s.k} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 6px",borderRadius:6,cursor:"pointer",marginBottom:2,background:pdfSec[s.k]?"#eff6ff":"#f8fafc",border:`1px solid ${pdfSec[s.k]?"#93c5fd":"#e2e8f0"}`}}>
+            <input type="checkbox" checked={pdfSec[s.k]} onChange={()=>togglePdfSec(s.k)} style={{accentColor:"#1e40af"}}/>
+            <span style={{fontSize:10,fontWeight:600,color:pdfSec[s.k]?"#1e40af":"#94a3b8"}}>{s.icon} {s.l}</span>
+          </label>
+        ))}
+        <div style={{display:"flex",gap:6,marginTop:10}}>
+          <button onClick={()=>{setPdfSec({income:true,maxBorrow:true,cashFlow:true,sell:true,budget:true,rule5030:true,compare:true,amort:true,invest:true});}}
+            style={{flex:1,padding:"5px",borderRadius:6,background:"#f8fafc",border:"1px solid #e2e8f0",fontSize:9,fontWeight:700,color:"#475569",cursor:"pointer"}}>Select All</button>
+          <button onClick={()=>{setPdfSec({income:false,maxBorrow:false,cashFlow:false,sell:false,budget:false,rule5030:false,compare:false,amort:false,invest:false});}}
+            style={{flex:1,padding:"5px",borderRadius:6,background:"#f8fafc",border:"1px solid #e2e8f0",fontSize:9,fontWeight:700,color:"#475569",cursor:"pointer"}}>Deselect All</button>
+        </div>
+        <button onClick={()=>{setShowPdfModal(false);genReport(c,{st,fl:flL,ty,lt:ltL,price:pr,dp,cp,sr},sellCalc,ruleCalc,{dL,dV,eL,ec:c.ec},compareCalc,pdfSec);}}
+          style={{width:"100%",marginTop:8,padding:"8px",borderRadius:8,background:"linear-gradient(135deg,#22c55e,#16a34a)",color:"#fff",fontSize:12,fontWeight:800,border:"none",cursor:"pointer",boxShadow:"0 2px 10px #16a34a40"}}>
+          Generate PDF
+        </button>
+        <button onClick={()=>setShowPdfModal(false)}
+          style={{width:"100%",marginTop:4,padding:"5px",borderRadius:6,background:"transparent",border:"1px solid #e2e8f0",fontSize:9,fontWeight:600,color:"#64748b",cursor:"pointer"}}>Cancel</button>
+      </div>
+    </div>}
+
   </div>);
 }
