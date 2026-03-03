@@ -158,9 +158,11 @@ function genReport(c, inp, sellData, ruleData, budgetData, compareData) {
       +'<div style="font-size:9px;color:#94a3b8;margin-top:6px">All scenarios use the same income, interest rate, loan term, and expense inputs. Highlighted values indicate the most favorable option.</div>';
   }
 
-  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Home Affordability Report</title>
-<style>@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700;900&display=swap');
-*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Source Sans 3',sans-serif;color:#1e293b;padding:32px;max-width:820px;margin:0 auto;font-size:11px;line-height:1.5}
+  const html=`<style>
+*{margin:0;padding:0;box-sizing:border-box}
+</style>
+<div style="font-family:sans-serif;color:#1e293b;padding:32px;max-width:820px;margin:0 auto;font-size:11px;line-height:1.5">
+<style>
 h1{font-size:22px;font-weight:900;color:#0f172a;border-bottom:3px solid #1e40af;padding-bottom:6px;margin-bottom:4px}
 h2{font-size:13px;font-weight:800;color:#fff;background:#1e293b;padding:5px 10px;margin:14px 0 4px;border-radius:4px}
 h2.g{background:#15803d}h2.r{background:#b91c1c}h2.p{background:#4a148c}h2.o{background:#c2410c}h2.teal{background:#0f766e}h2.amber{background:#b45309}
@@ -188,7 +190,7 @@ tr.w td{background:#fef2f2;color:#dc2626}tr.hl td{background:#eff6ff;font-weight
 .toc ol{padding-left:16px;line-height:1.8;color:#475569}
 .page-break{page-break-before:always;margin-top:20px}
 @media print{body{padding:16px;font-size:10px}h2{break-after:avoid}table{break-inside:avoid}.tc{break-inside:avoid}.page-break{page-break-before:always}}
-</style></head><body>
+</style>
 <h1>🏠 Home Affordability Report</h1>
 <div class="sub">${sn} • ${inp.fl} Filing • ${inp.ty}-Year ${inp.lt}</div>
 <div class="dt">Generated ${now}</div>
@@ -340,24 +342,20 @@ ${c.invEnd.v>c.intSv?'📈 Investing wins by '+$(c.invEnd.v-c.intSv):'🏠 Payin
 </table>`:''}
 
 <div class="nt"><b>Disclaimer:</b> Educational/planning purposes only — not financial, legal, or tax advice. Consult a licensed mortgage professional, tax advisor, and financial planner. Tax calculations use 2025 federal brackets and approximate state rates. Property tax uses ${sn} average effective rate (${(STATES[inp.st]?.p*100||0).toFixed(2)}%) — actual rates vary by county. Investment returns not guaranteed.</div>
-</body></html>`;
-  // Render PDF — element is off-screen in real DOM, onclone repositions it for html2canvas
+</div>`;
+  // Render PDF — append container, let html2canvas capture, then remove
   import('html2pdf.js').then(mod=>{
     const html2pdf=mod.default||mod;
     const container=document.createElement('div');
-    container.id='__pdf_gen__';
     container.innerHTML=html;
     container.style.width='820px';
-    container.style.position='absolute';
-    container.style.left='-9999px';
-    container.style.top='0';
+    container.style.background='#fff';
     document.body.appendChild(container);
     html2pdf().set({
       margin:[12,10,12,10],
       filename:'Home_Affordability_Report.pdf',
       image:{type:'jpeg',quality:0.98},
-      html2canvas:{scale:2,useCORS:true,letterRendering:true,scrollY:0,
-        onclone:function(doc){var el=doc.getElementById('__pdf_gen__');if(el){el.style.position='static';el.style.left='auto';}}},
+      html2canvas:{scale:2,useCORS:true,letterRendering:true},
       jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
       pagebreak:{mode:['css','legacy'],avoid:['tr','.rt','.bx','.g3','.g2']}
     }).from(container).save().then(()=>{
