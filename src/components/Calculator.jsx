@@ -82,10 +82,10 @@ const TAB_INFO = {
   invest: "Should you put extra money toward paying down your mortgage, or invest it in the market? Enter an extra monthly amount and an expected annual return. The app compares guaranteed interest savings vs. projected portfolio growth year-by-year, and declares a winner at your loan term.",
   budget: "Enter all your monthly obligated debts that appear on your credit report (car payments, student loans, credit cards) and your full set of discretionary living expenses (groceries, utilities, subscriptions, and more). Home maintenance is automatically estimated at 1% of the purchase price annually.",
   rule: "The 50/30/20 rule is a simple, powerful personal finance framework. 50% of after-tax income goes to Needs (housing, utilities, insurance, minimum debt payments), 30% to Wants (dining, entertainment, hobbies), and 20% to Savings & investments. This tab maps your actual numbers from every other tab onto this framework so you can see exactly where you stand.",
-  summary: "Your complete financial health dashboard — monthly cash flow, surplus or shortfall, all four affordability ratios (front-end DTI, back-end DTI, housing-to-net, total expense ratio), and total cash needed to close. Download a full PDF report that combines every tab's data into a single printable document.",
+  summary: "Your complete financial health dashboard — monthly cash flow, surplus or shortfall, all four affordability ratios (front-end DTI, back-end DTI, housing-to-net, total expense ratio), and total cash needed to close. Download a full PDF report that combines every tab's data — including scenario comparison — into a single document.",
 };
 
-function genReport(c, inp, sellData, ruleData, budgetData) {
+function genReport(c, inp, sellData, ruleData, budgetData, compareData) {
   const sn=STATES[inp.st]?.n||inp.st;
   const now=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
   const rw=(l,v,cl="")=>`<tr class="${cl}"><td>${l}</td><td class="n">${v}</td></tr>`;
@@ -130,6 +130,43 @@ function genReport(c, inp, sellData, ruleData, budgetData) {
   const expRowsLeft=beL&&bEc?beL.slice(0,half).map((l,i)=>bEc[i]>0?`<tr><td>${l}${i===12?' <em style="color:#16a34a;font-size:9px">(auto)</em>':''}</td><td class="n">${$(bEc[i])}</td></tr>`:'').join(''):'';
   const expRowsRight=beL&&bEc?beL.slice(half).map((l,i)=>{const ri=i+half;return bEc[ri]>0?`<tr><td>${l}</td><td class="n">${$(bEc[ri])}</td></tr>`:''}).join(''):'';
 
+  // Compare section HTML (built separately to avoid nested template literals)
+  let compareHtml='';
+  if(compareData){
+    const colors=['#1e40af','#15803d','#7c3aed'];
+    const bgs=['#eff6ff','#f0fdf4','#faf5ff'];
+    const tableRows=compareData.rows.map((r,i)=>{
+      const bg=i%2===0?'#fff':'#f8fafc';
+      const cells=r.vals.map((v,si)=>{
+        const best=r.bestIdx===si;
+        return'<td style="padding:4px 7px;text-align:right;font-weight:'+(best?'900':'600')+';color:'+(best?colors[si]:'#1e293b')+';background:'+(best?bgs[si]:'transparent')+'">'+v+'</td>';
+      }).join('');
+      return'<tr style="background:'+bg+'"><td style="padding:4px 7px;font-weight:600;color:#475569">'+r.label+'</td>'+cells+'</tr>';
+    }).join('');
+    const cards=compareData.scenarios.map((s,i)=>{
+      const ok=s.surplus>=0&&s.fDTI<=0.28;
+      return'<div style="flex:1;border-radius:8px;border:2px solid '+(ok?'#bbf7d0':'#fecaca')+';background:'+bgs[i]+';padding:8px;text-align:center">'
+        +'<div style="font-size:11px;font-weight:900;color:'+colors[i]+';margin-bottom:4px">Scenario '+(i+1)+'</div>'
+        +'<div style="font-size:9px;color:#64748b">Home: '+s.price+'</div>'
+        +'<div style="font-size:9px;color:#64748b">Down: '+s.dpAmt+' ('+s.dpPct+')</div>'
+        +'<div style="font-size:14px;font-weight:900;color:'+colors[i]+';margin:4px 0">PITI: '+s.piti+'</div>'
+        +'<div style="font-size:9px;color:'+(s.fDTI<=0.28?'#16a34a':'#dc2626')+'">Front DTI: '+s.fDTIStr+' '+(s.fDTI<=0.28?'✓':'⚠')+'</div>'
+        +'<div style="font-size:9px;color:'+(s.surplus>=0?'#16a34a':'#dc2626')+'">Surplus: '+s.surplusStr+'</div>'
+        +'<div style="margin-top:4px;padding:3px;border-radius:4px;background:'+(ok?'#f0fdf4':'#fef2f2')+';font-size:9px;font-weight:800;color:'+(ok?'#16a34a':'#dc2626')+'">'+(ok?'✓ Affordable':'⚠ Risky')+'</div>'
+        +'</div>';
+    }).join('');
+    compareHtml='<div class="page-break"></div>'
+      +'<h2 style="background:#334155">🔀 Scenario Comparison</h2>'
+      +'<table style="font-size:10px"><thead><tr>'
+      +'<th style="padding:5px 7px;background:#1e293b;color:#fff;font-weight:800;text-align:left">Metric</th>'
+      +'<th style="padding:5px 7px;background:#1e40af;color:#fff;font-weight:800;text-align:right">Scenario 1</th>'
+      +'<th style="padding:5px 7px;background:#15803d;color:#fff;font-weight:800;text-align:right">Scenario 2</th>'
+      +'<th style="padding:5px 7px;background:#7c3aed;color:#fff;font-weight:800;text-align:right">Scenario 3</th>'
+      +'</tr></thead><tbody>'+tableRows+'</tbody></table>'
+      +'<div style="display:flex;gap:8px;margin-top:8px">'+cards+'</div>'
+      +'<div style="font-size:9px;color:#94a3b8;margin-top:6px">All scenarios use the same income, interest rate, loan term, and expense inputs. Highlighted values indicate the most favorable option.</div>';
+  }
+
   const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Home Affordability Report</title>
 <style>@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700;900&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}body{font-family:'Source Sans 3',sans-serif;color:#1e293b;padding:32px;max-width:820px;margin:0 auto;font-size:11px;line-height:1.5}
@@ -172,6 +209,7 @@ tr.w td{background:#fef2f2;color:#dc2626}tr.hl td{background:#eff6ff;font-weight
 ${sellData&&sellData.equity>0?'<li>Sell &amp; Move Up Analysis</li>':''}
 <li>Budget Detail — Debts &amp; Expenses (all line items)</li>
 <li>50/30/20 Budget Analysis</li>
+<li>Scenario Comparison (3 scenarios)</li>
 <li>${inp.ty}-Year Amortization Schedule${c.extra>0?' with Extra Payment':''}</li>
 ${c.extra>0?`<li>Pay Down vs Invest Comparison (${inp.sr}% return)</li>`:''}
 </ol></div>
@@ -268,6 +306,8 @@ ${ruleRow("💰 Savings (20% target)",ruleData.savings,ruleData.t20,ruleData.sav
 </div>`:''}
 <div class="bx" style="margin-top:8px"><div class="lb">6-Month Emergency Fund Target</div><div class="big" style="color:#92400e">${$(c.totOut*6)}</div></div>
 
+${compareHtml}
+
 <div class="page-break"></div>
 <h2 class="p">📅 ${inp.ty}-Year Amortization Schedule${c.extra>0?' — '+$(c.extra)+'/mo Extra Payment':''}</h2>
 ${c.extra>0?`<div style="display:flex;gap:10px;margin-bottom:6px;font-size:10px">
@@ -310,7 +350,25 @@ ${c.invEnd.v>c.intSv?'📈 Investing wins by '+$(c.invEnd.v-c.intSv):'🏠 Payin
 
 <div class="nt"><b>Disclaimer:</b> Educational/planning purposes only — not financial, legal, or tax advice. Consult a licensed mortgage professional, tax advisor, and financial planner. Tax calculations use 2025 federal brackets and approximate state rates. Property tax uses ${sn} average effective rate (${(STATES[inp.st]?.p*100||0).toFixed(2)}%) — actual rates vary by county. Investment returns not guaranteed.</div>
 </body></html>`;
-  const b=new Blob([html],{type:'text/html'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='Home_Affordability_Report.html';a.click();URL.revokeObjectURL(u);
+  // Render HTML into hidden container, then use html2pdf.js for real PDF
+  const container=document.createElement('div');
+  container.innerHTML=html;
+  container.style.position='fixed';container.style.left='-9999px';container.style.top='0';
+  container.style.width='820px';
+  document.body.appendChild(container);
+  import('html2pdf.js').then(mod=>{
+    const html2pdf=mod.default||mod;
+    html2pdf().set({
+      margin:[12,10,12,10],
+      filename:'Home_Affordability_Report.pdf',
+      image:{type:'jpeg',quality:0.98},
+      html2canvas:{scale:2,useCORS:true,letterRendering:true},
+      jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
+      pagebreak:{mode:['css','legacy'],avoid:['tr','.rt','.bx','.g3','.g2']}
+    }).from(container).save().then(()=>{
+      document.body.removeChild(container);
+    });
+  });
 }
 
 
@@ -820,6 +878,43 @@ export default function App(){
       needsPct:netM>0?needs/netM:0,wantsPct:netM>0?wants/netM:0,savingsPct:netM>0?savings/netM:0};
   },[c]);
 
+  // ── Compare data for PDF report ──────────────────────────────────────────
+  const compareCalc=useMemo(()=>{
+    const scenInputs=[
+      {price:pr,dpPct:dp},
+      {price:sc2pr,dpPct:sc2dp},
+      {price:sc3pr,dpPct:sc3dp},
+    ];
+    const scenarios=scenInputs.map(s=>{
+      const dpAmt=s.price*s.dpPct/100;
+      const loan=s.price-dpAmt;
+      const rate=(lt==="fixed"?fr:ar)/100;
+      const mPI2=pmt(rate,ty,loan);
+      const piti2=mPI2+(s.price*pR)/12+ins/12+(s.dpPct<20?(loan*pm/100)/12:0);
+      const surplus2=c.netM-piti2-c.totD-c.totE;
+      const fDTI2=c.grM>0?piti2/c.grM:0;
+      const bDTI2=c.grM>0?(piti2+c.totD)/c.grM:0;
+      const close=dpAmt+loan*cp/100;
+      return{price:$(s.price),dpAmt:$(dpAmt),dpPct:s.dpPct+'%',loan:$(loan),piti:$(piti2),
+        surplusStr:(surplus2>=0?'+':'')+$(surplus2),surplus:surplus2,
+        fDTI:fDTI2,fDTIStr:pc(fDTI2),bDTI:bDTI2,bDTIStr:pc(bDTI2),close:$(close),
+        _piti:piti2,_close:close,_surplus:surplus2,_fDTI:fDTI2,_bDTI:bDTI2};
+    });
+    const bestMin=(arr)=>{const m=Math.min(...arr);return arr.indexOf(m);};
+    const bestMax=(arr)=>{const m=Math.max(...arr);return arr.indexOf(m);};
+    const rows=[
+      {label:"Home Price",    vals:scenarios.map(s=>s.price),    bestIdx:-1},
+      {label:"Down Payment",  vals:scenarios.map(s=>s.dpAmt),   bestIdx:-1},
+      {label:"Loan Amount",   vals:scenarios.map(s=>s.loan),    bestIdx:-1},
+      {label:"Monthly PITI",  vals:scenarios.map(s=>s.piti),    bestIdx:bestMin(scenarios.map(s=>s._piti))},
+      {label:"Cash to Close", vals:scenarios.map(s=>s.close),   bestIdx:bestMin(scenarios.map(s=>s._close))},
+      {label:"Front-End DTI", vals:scenarios.map(s=>s.fDTIStr), bestIdx:bestMin(scenarios.map(s=>s._fDTI))},
+      {label:"Back-End DTI",  vals:scenarios.map(s=>s.bDTIStr), bestIdx:bestMin(scenarios.map(s=>s._bDTI))},
+      {label:"Monthly Surplus",vals:scenarios.map(s=>s.surplusStr),bestIdx:bestMax(scenarios.map(s=>s._surplus))},
+    ];
+    return{scenarios,rows};
+  },[pr,dp,sc2pr,sc2dp,sc3pr,sc3dp,lt,fr,ar,ty,ins,pm,cp,pR,c]);
+
   const sC=c.surplus>=0?"#16a34a":"#dc2626";const sB2=c.surplus>=0?"#f0fdf4":"#fef2f2";
 
   const tabs=[
@@ -845,8 +940,8 @@ export default function App(){
           <div style={{fontSize:14,fontWeight:900,color:"#fff"}}>🏠 Home Affordability Calculator</div>
           <div style={{fontSize:9,color:"#93c5fd",marginTop:1}}>Mortgage, tax & budget analysis • All 50 states + DC</div>
         </div>
-        <button onClick={e=>{e.stopPropagation();genReport(c,{st,fl:flL,ty,lt:ltL,price:pr,dp,cp,sr},sellCalc,ruleCalc,{dL,dV,eL,ec:c.ec});}}
-          style={{padding:"6px 12px",borderRadius:7,background:"linear-gradient(135deg,#22c55e,#16a34a)",color:"#fff",fontSize:9,fontWeight:800,border:"none",cursor:"pointer",boxShadow:"0 2px 8px #16a34a40"}}>📄 Download Report</button>
+        <button onClick={e=>{e.stopPropagation();genReport(c,{st,fl:flL,ty,lt:ltL,price:pr,dp,cp,sr},sellCalc,ruleCalc,{dL,dV,eL,ec:c.ec},compareCalc);}}
+          style={{padding:"6px 12px",borderRadius:7,background:"linear-gradient(135deg,#22c55e,#16a34a)",color:"#fff",fontSize:9,fontWeight:800,border:"none",cursor:"pointer",boxShadow:"0 2px 8px #16a34a40"}}>📄 Download PDF</button>
       </div>
     </div>
 
@@ -1437,12 +1532,12 @@ export default function App(){
         </div>
       </Sec>
       <div style={{textAlign:"center",marginTop:6}}>
-        <button onClick={()=>genReport(c,{st,fl:flL,ty,lt:ltL,price:pr,dp,cp,sr},sellCalc,ruleCalc,{dL,dV,eL,ec:c.ec})}
+        <button onClick={()=>genReport(c,{st,fl:flL,ty,lt:ltL,price:pr,dp,cp,sr},sellCalc,ruleCalc,{dL,dV,eL,ec:c.ec},compareCalc)}
           style={{padding:"8px 20px",borderRadius:8,background:"linear-gradient(135deg,#22c55e,#16a34a)",color:"#fff",fontSize:11,fontWeight:800,border:"none",cursor:"pointer",boxShadow:"0 2px 10px #16a34a40"}}>
           📄 Download Full Report
         </button>
-        <div style={{fontSize:8,color:"#94a3b8",marginTop:3}}>Downloads HTML — open and Print → Save as PDF</div>
-        <div style={{fontSize:8,color:"#94a3b8",marginTop:2}}>Report includes: Income, Mortgage, Max Loan, Amortize, Invest, Budget, Sell Analysis & 50/30/20</div>
+        <div style={{fontSize:8,color:"#94a3b8",marginTop:3}}>Downloads a complete PDF report</div>
+        <div style={{fontSize:8,color:"#94a3b8",marginTop:2}}>Includes: Income, Mortgage, Max Loan, Amortize, Invest, Budget, Sell Analysis, 50/30/20 & Scenario Comparison</div>
       </div>
       <div style={{borderRadius:6,padding:6,fontSize:8,background:"#f8fafc",border:"1px solid #e2e8f0",color:"#94a3b8",marginTop:8}}>
         <b>Disclaimer:</b> Estimates only. Consult mortgage professional & tax advisor. State rates approximate. Property tax uses state average — varies by county. Investment returns not guaranteed.
