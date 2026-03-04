@@ -1,3 +1,37 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Calculator range slider styling */
+.calc-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: linear-gradient(to right, #3b82f6, #1e40af);
+  border-radius: 4px;
+  outline: none;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+.calc-slider:hover {
+  opacity: 1;
+}
+.calc-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #1e40af;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(30, 64, 175, 0.4);
+  border: 2px solid #fff;
+}
+.calc-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #1e40af;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(30, 64, 175, 0.4);
+  border: 2px solid #fff;
+}
